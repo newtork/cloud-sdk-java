@@ -7,6 +7,7 @@ package com.sap.cloud.sdk.datamodel.openapi.generator;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.Year;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -21,6 +22,7 @@ import org.openapitools.codegen.languages.JavaClientCodegen;
 import org.openapitools.codegen.model.ModelMap;
 import org.openapitools.codegen.model.OperationsMap;
 
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.sap.cloud.sdk.datamodel.openapi.generator.model.ApiMaturity;
 import com.sap.cloud.sdk.datamodel.openapi.generator.model.GenerationConfiguration;
@@ -49,7 +51,7 @@ class GenerationConfigurationConverter
     static final String SAP_COPYRIGHT_HEADER =
         "Copyright (c) " + Year.now() + " SAP SE or an SAP affiliate company. All rights reserved.";
     static final String TEMPLATE_DIRECTORY = Paths.get("openapi-generator").resolve("mustache-templates").toString();
-    static final String LIBRARY_NAME = JavaClientCodegen.RESTTEMPLATE;
+    static final String LIBRARY_NAME = "resttemplate";
 
     @Nonnull
     static ClientOptInput convertGenerationConfiguration(
@@ -66,6 +68,9 @@ class GenerationConfigurationConverter
         config.setModelPackage(generationConfiguration.getModelPackage());
         config.setTemplateDir(TEMPLATE_DIRECTORY);
         config.additionalProperties().putAll(getAdditionalProperties(generationConfiguration));
+
+        final var operationIdNameMapping = getOperationIdNameMapping(generationConfiguration);
+        config.operationIdNameMapping().putAll(operationIdNameMapping);
 
         final var clientOptInput = new ClientOptInput();
         clientOptInput.config(config);
@@ -94,6 +99,20 @@ class GenerationConfigurationConverter
                 return super.postProcessOperationsWithModels(ops, allModels);
             }
         };
+    }
+
+    private static Map<String, String> getOperationIdNameMapping( @Nonnull final GenerationConfiguration config )
+    {
+        var allowIds = config.getAdditionalProperties().get("operationIdNames");
+        if( allowIds == null || allowIds.isBlank() ) {
+            return Collections.emptyMap();
+        }
+
+        // sanitized
+        allowIds = String.join(",", allowIds.trim().replaceAll(",?\\s+,?", ","));
+
+        // split to map, throw exception for duplicate keys or invalid strings
+        return Splitter.on(",").withKeyValueSeparator("=").split(allowIds);
     }
 
     private static void setGlobalSettings()
