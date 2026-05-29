@@ -1,15 +1,9 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.requestheader;
 
 import java.util.Collections;
 import java.util.List;
 
 import javax.annotation.Nonnull;
-
-import com.google.common.annotations.Beta;
 
 /**
  * Represents an <b>immutable</b> container for multiple HTTP headers. These headers consist of a {@code name} and
@@ -101,7 +95,6 @@ public interface RequestHeaderContainer
     /**
      * Convenience class for constructing and manipulating {@link RequestHeaderContainer}s.
      */
-    @Beta
     interface Builder
     {
         /**

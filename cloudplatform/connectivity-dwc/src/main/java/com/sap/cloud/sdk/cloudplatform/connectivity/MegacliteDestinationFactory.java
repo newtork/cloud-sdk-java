@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.net.URI;
@@ -52,7 +48,7 @@ class MegacliteDestinationFactory
         return DefaultHttpDestination
             .builder(destinationUrl)
             .securityConfiguration(SecurityConfigurationStrategy.FROM_PLATFORM)
-            .headerProviders(DwcHeaderProvider.getInstance())
+            .headerProviders(DwcHeaderProvider.limitedHeaderProviderForDestinationAccess())
             .build();
     }
 }

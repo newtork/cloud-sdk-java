@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.utility;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,7 +28,9 @@ class NamingUtilsTest
                 Arguments.of("Lower,enumeration", "LowerEnumeration"),
                 Arguments.of("KeepCamelCase", "KeepCamelCase"),
                 Arguments.of("handle_snake_case", "HandleSnakeCase"),
-                Arguments.of("OData Service for Business Partner", "BusinessPartner"));
+                Arguments.of("OData Service for Business Partner", "BusinessPartner"),
+                Arguments.of("API MATERIAL DOCUMENT SRV", "MATERIALDOCUMENTSRV"),
+                Arguments.of("MATERIALDOCUMENTSRV", "MATERIALDOCUMENTSRV"));
     }
 
     @ParameterizedTest
@@ -56,7 +54,9 @@ class NamingUtilsTest
                 Arguments.of("Lower,enumeration", "lowerenumeration"),
                 Arguments.of("KeepCamelCase", "keepcamelcase"),
                 Arguments.of("handle_snake_case", "handlesnakecase"),
-                Arguments.of("OData Service for Business Partner", "businesspartner"));
+                Arguments.of("OData Service for Business Partner", "businesspartner"),
+                Arguments.of("API MATERIAL DOCUMENT SRV", "materialdocumentsrv"),
+                Arguments.of("materialdocumentsrv", "materialdocumentsrv"));
     }
 
     @ParameterizedTest

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.thread;
 
 import java.util.concurrent.Callable;
@@ -19,7 +15,13 @@ public interface ThreadContextDecorator
      */
     class DefaultPriorities
     {
+        /**
+         * The priority for the security context decorator.
+         */
         public static final int SCP_CF_SECURITY_CONTEXT_DECORATOR = -1;
+        /**
+         * The priority for the custom decorator.
+         */
         public static final int CUSTOM_DECORATOR = 0;
     }
 

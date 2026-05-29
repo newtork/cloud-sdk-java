@@ -1,13 +1,7 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
-
-import com.google.common.annotations.Beta;
 
 import lombok.Getter;
 
@@ -60,7 +54,6 @@ public enum SecurityConfigurationStrategy
      * @throws IllegalArgumentException
      *             if no {@link SecurityConfigurationStrategy} could be found for the given identifier.
      */
-    @Beta
     @Nonnull
     public static SecurityConfigurationStrategy ofIdentifierOrDefault( @Nullable final String identifier )
     {

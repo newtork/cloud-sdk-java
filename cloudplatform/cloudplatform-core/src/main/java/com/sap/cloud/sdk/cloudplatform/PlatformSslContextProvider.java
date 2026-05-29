@@ -1,20 +1,13 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform;
 
 import javax.annotation.Nonnull;
 import javax.net.ssl.SSLContext;
-
-import com.google.common.annotations.Beta;
 
 import io.vavr.control.Try;
 
 /**
  * Creates an SslContext based on properties of the platform.
  */
-@Beta
 @FunctionalInterface
 public interface PlatformSslContextProvider
 {

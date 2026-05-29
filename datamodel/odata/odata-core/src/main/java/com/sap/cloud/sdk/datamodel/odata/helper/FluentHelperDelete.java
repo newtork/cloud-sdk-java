@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.helper;
 
 import javax.annotation.Nonnull;
@@ -99,6 +95,7 @@ public abstract class FluentHelperDelete<FluentHelperT, EntityT extends VdmEntit
     public ModificationResponse<EntityT> executeRequest( @Nonnull final Destination destination )
     {
         final HttpClient httpClient = HttpClientAccessor.getHttpClient(destination);
+
         final ODataRequestResultGeneric result = toRequest().execute(httpClient);
 
         return ModificationResponse.of(result, getEntity(), destination);

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import java.util.ArrayList;
@@ -65,6 +61,9 @@ abstract class AbstractRequestBuilder<BuilderT extends RequestBuilder<ResultT>, 
     @Nonnull
     private final List<ODataRequestListener> listeners = new ArrayList<>();
 
+    /**
+     * A token retriever.
+     */
     @Nonnull
     protected CsrfTokenRetriever csrfTokenRetriever = CsrfTokenRetriever.DISABLED_CSRF_TOKEN_RETRIEVER;
 

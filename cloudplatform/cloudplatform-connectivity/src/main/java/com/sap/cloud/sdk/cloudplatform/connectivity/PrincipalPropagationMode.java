@@ -1,10 +1,4 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
-
-import com.google.common.annotations.Beta;
 
 import lombok.RequiredArgsConstructor;
 
@@ -14,7 +8,6 @@ import lombok.RequiredArgsConstructor;
  * @since 5.0.0
  */
 @RequiredArgsConstructor
-@Beta
 public enum PrincipalPropagationMode
 {
     /**

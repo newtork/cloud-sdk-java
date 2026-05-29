@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator;
 
 import java.lang.reflect.Method;
@@ -12,10 +8,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.TreeMap;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import com.google.common.collect.Lists;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 class NamingContext
 {

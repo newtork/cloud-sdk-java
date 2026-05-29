@@ -2,16 +2,19 @@ package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static java.util.Map.entry;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.absent;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.unauthorized;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.ServiceBindingTestUtility.bindingWithCredentials;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import java.io.IOException;
 import java.net.URI;
@@ -19,25 +22,19 @@ import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
 import java.security.cert.CertificateException;
-import java.util.List;
-
-import javax.annotation.Nullable;
 
 import org.apache.http.HttpHeaders;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
 import com.sap.cloud.environment.servicebinding.api.ServiceBinding;
 import com.sap.cloud.environment.servicebinding.api.ServiceIdentifier;
-import com.sap.cloud.sdk.cloudplatform.connectivity.exception.HttpClientInstantiationException;
+import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
 import com.sap.cloud.sdk.cloudplatform.tenant.DefaultTenant;
 import com.sap.cloud.sdk.cloudplatform.tenant.TenantAccessor;
-import com.sap.cloud.security.client.HttpClientFactory;
 import com.sap.cloud.security.config.ClientIdentity;
+import com.sap.cloud.security.xsuaa.client.OAuth2ServiceException;
 
 import io.vavr.control.Try;
 
@@ -53,35 +50,6 @@ class OAuth2IntegrationTest
           "jti": "abc456"
         }
         """;
-
-    private List<HttpClientFactory> oldFactories = List.of();
-
-    @BeforeEach
-    void mockClientFactory()
-    {
-        oldFactories = HttpClientFactory.services;
-        HttpClientFactory.services.clear();
-
-        // `useSystemProperties` is needed for the WireMock proxying
-        HttpClientFactory.services.add(identity -> HttpClientBuilder.create().useSystemProperties().build());
-        HttpClientAccessor.setHttpClientFactory(new DefaultHttpClientFactory()
-        {
-            @Override
-            protected HttpClientBuilder getHttpClientBuilder( @Nullable HttpDestinationProperties destination )
-                throws HttpClientInstantiationException
-            {
-                return super.getHttpClientBuilder(destination).useSystemProperties();
-            }
-        });
-    }
-
-    @AfterEach
-    void restoreClientFactories()
-    {
-        HttpClientFactory.services.clear();
-        HttpClientFactory.services.addAll(oldFactories);
-        HttpClientAccessor.setHttpClientFactory(null);
-    }
 
     @Test
     void testIasTokenFlow()
@@ -153,6 +121,55 @@ class OAuth2IntegrationTest
     }
 
     @Test
+    void testExtended401ErrorMessage()
+    {
+        final ServiceBinding binding =
+            bindingWithCredentials(
+                ServiceIdentifier.DESTINATION,
+                entry("credential-type", "binding-secret"),
+                entry("clientid", "myClientId2"),
+                entry("clientsecret", "myClientSecret2"),
+                entry("uri", "http://provider.destination.domain"),
+                entry("url", "http://provider.destination.domain"));
+        final ServiceBindingDestinationOptions options = ServiceBindingDestinationOptions.forService(binding).build();
+
+        final Try<HttpDestination> maybeDestination =
+            new OAuth2ServiceBindingDestinationLoader().tryGetDestination(options);
+        assertThat(maybeDestination.isSuccess()).isTrue();
+        final HttpDestination destination = maybeDestination.get();
+
+        {
+            // provider case - no tenant:
+            // Here, the short error message is returned.
+            stubFor(
+                post("/oauth/token")
+                    .withHost(equalTo("provider.destination.domain"))
+                    .withHeader("X-zid", absent())
+                    .willReturn(unauthorized()));
+            assertThatCode(destination::getHeaders)
+                .isInstanceOf(DestinationAccessException.class)
+                .hasMessageEndingWith("Failed to resolve access token.")
+                .hasRootCauseInstanceOf(OAuth2ServiceException.class);
+        }
+        {
+            // subscriber tenant:
+            // Here, the error message contains a note about updating the SaaS registry.
+            stubFor(
+                post("/oauth/token")
+                    .withHost(equalTo("provider.destination.domain"))
+                    .withHeader("X-zid", equalTo("subscriber"))
+                    .willReturn(unauthorized()));
+
+            TenantAccessor.executeWithTenant(new DefaultTenant("subscriber", "subscriber"), () -> {
+                assertThatCode(destination::getHeaders)
+                    .isInstanceOf(DestinationAccessException.class)
+                    .hasMessageEndingWith("subscribed for the current tenant.")
+                    .hasRootCauseInstanceOf(OAuth2ServiceException.class);
+            });
+        }
+    }
+
+    @Test
     @DisplayName( "The subdomain should be replaced for subscriber tenants when using IAS and ZTIS" )
     void testIasFlowWithZeroTrustAndSubscriberTenant()
         throws KeyStoreException,
@@ -162,7 +179,7 @@ class OAuth2IntegrationTest
     {
         final KeyStore ks = KeyStore.getInstance("JKS");
         ks.load(null, null);
-        final ClientIdentity identity = new SecurityLibWorkarounds.ZtisClientIdentity("myClientId", ks);
+        final ClientIdentity identity = new SecurityLibWorkarounds.ZtisClientIdentity("myClientId", () -> ks);
 
         stubFor(
             post("/oauth2/token")

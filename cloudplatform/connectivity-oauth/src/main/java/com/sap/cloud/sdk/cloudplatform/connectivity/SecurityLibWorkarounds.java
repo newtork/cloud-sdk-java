@@ -1,57 +1,36 @@
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
-import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationKeyStoreComparator.resolveCertificatesOnly;
-import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationKeyStoreComparator.resolveKeyStoreHashCode;
-
 import java.security.KeyStore;
+import java.util.function.Supplier;
 
 import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
-
+import com.sap.cloud.sdk.cloudplatform.exception.CloudPlatformException;
 import com.sap.cloud.security.config.ClientIdentity;
-import com.sap.cloud.security.config.CredentialType;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.EqualsAndHashCode;
+import lombok.ToString;
+import lombok.Value;
 
 final class SecurityLibWorkarounds
 {
-    private static final String X509_GENERATED = "X509_GENERATED";
-    static final String X509_ATTESTED = "X509_ATTESTED";
-    static final String X509_PROVIDED = "X509_PROVIDED";
-
     private SecurityLibWorkarounds()
     {
         throw new IllegalStateException("This utility class should never be instantiated.");
     }
 
-    @Nullable
-    static CredentialType getCredentialType( @Nonnull final String rawType )
-    {
-        final CredentialType maybeType = CredentialType.from(rawType);
-        if( maybeType != null ) {
-            return maybeType;
-        }
-        // Workaround for the Security Client Lib <= 3.3.5 which does not recognise X509_GENERATED, X509_PROVIDED and X509_ATTESTED.
-        if( rawType.equalsIgnoreCase(X509_GENERATED)
-            || rawType.equalsIgnoreCase(X509_ATTESTED)
-            || rawType.equalsIgnoreCase(X509_PROVIDED) ) {
-            return CredentialType.X509;
-        }
-        return null;
-    }
-
-    @Getter
-    @AllArgsConstructor
+    @Value
     static class ZtisClientIdentity implements ClientIdentity
     {
         @Nonnull
-        private final String id;
+        String id;
+
+        // Exclude certificates from equals & hash code since they rotate dynamically at runtime
+        // Instead, the OAuth2Service cache explicitly checks for outdated KeyStores
         @Nonnull
-        private final KeyStore keyStore;
+        @EqualsAndHashCode.Exclude
+        @ToString.Exclude
+        Supplier<KeyStore> keyStoreSource;
 
         @Override
         public boolean isCertificateBased()
@@ -59,29 +38,17 @@ final class SecurityLibWorkarounds
             return true;
         }
 
-        // The identity will be used as cache key, so it's important we correctly implement equals/hashCode
-        @Override
-        public boolean equals( final Object obj )
+        @Nonnull
+        KeyStore getKeyStore()
         {
-            if( this == obj ) {
-                return true;
+            try {
+                return keyStoreSource.get();
             }
-
-            if( obj == null || getClass() != obj.getClass() ) {
-                return false;
+            catch( final Exception e ) {
+                throw new CloudPlatformException(
+                    "Failed to load X509 certificate for credential type X509_ATTESTED.",
+                    e);
             }
-
-            final ZtisClientIdentity that = (ZtisClientIdentity) obj;
-            return new EqualsBuilder()
-                .append(id, that.id)
-                .append(resolveCertificatesOnly(keyStore), resolveCertificatesOnly(that.keyStore))
-                .isEquals();
-        }
-
-        @Override
-        public int hashCode()
-        {
-            return new HashCodeBuilder(41, 71).append(id).append(resolveKeyStoreHashCode(keyStore)).build();
         }
     }
 }

@@ -1,11 +1,8 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator;
 
 import java.io.File;
 import java.lang.reflect.InvocationTargetException;
+import java.time.Year;
 import java.util.Set;
 
 import javax.annotation.Nonnull;
@@ -13,7 +10,6 @@ import javax.annotation.Nullable;
 
 import org.slf4j.Logger;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.datamodel.odata.utility.NameSource;
 import com.sap.cloud.sdk.datamodel.odata.utility.NamingStrategy;
 import com.sap.cloud.sdk.datamodel.odata.utility.S4HanaNamingStrategy;
@@ -25,7 +21,6 @@ import lombok.Getter;
  * Builder for the {@code ODataToVdmGenerator}, gathering all relevant parameter or providing default values for
  * unspecified ones.
  */
-@Beta
 @Getter
 public class DataModelGenerator implements DataModelGeneratorConfig
 {
@@ -131,7 +126,7 @@ public class DataModelGenerator implements DataModelGeneratorConfig
      * An SAP copyright header that can be added to generated files.
      */
     public static final String SAP_COPYRIGHT_HEADER =
-        "/*\n * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.\n */\n";
+        "/*\n * Copyright (c) " + Year.now() + " SAP SE or an SAP affiliate company. All rights reserved.\n */\n";
 
     private File inputDirectory = new File(DEFAULT_INPUT_DIRECTORY_NAME);
     private File outputDirectory = new File(DEFAULT_OUTPUT_DIRECTORY_NAME);

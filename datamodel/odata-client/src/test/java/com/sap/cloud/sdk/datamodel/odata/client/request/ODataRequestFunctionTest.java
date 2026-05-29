@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
@@ -206,5 +202,28 @@ class ODataRequestFunctionTest
             .hasParameter("$filter", "(philosphy eq 'Yin & Yang')")
             .hasParameter("$orderby", "name asc,ID asc")
             .hasParameter("$count", "true");
+    }
+
+    @Test
+    void testConstructorWithStructuredQueryDoesNotMutateResourcePath()
+    {
+        final StructuredQuery structuredQuery = StructuredQuery.onEntity("Authors", ODataProtocol.V4).withInlineCount();
+        final ODataResourcePath functionPath = ODataResourcePath.of(ODATA_FUNCTION);
+
+        new ODataRequestFunction(ODATA_SERVICE_PATH, functionPath, structuredQuery);
+
+        assertThat(functionPath.toString()).isEqualTo("/" + ODATA_FUNCTION);
+    }
+
+    @Test
+    void testParameterHandlingDoesNotMutateResourcePath()
+    {
+        final ODataFunctionParameters parameters =
+            new ODataFunctionParameters(ODataProtocol.V4).addParameter("key", "val");
+        final ODataResourcePath functionPath = ODataResourcePath.of(ODATA_FUNCTION);
+
+        new ODataRequestFunction(ODATA_SERVICE_PATH, functionPath, parameters, null, ODataProtocol.V4);
+
+        assertThat(functionPath.toString()).isEqualTo("/" + ODATA_FUNCTION);
     }
 }

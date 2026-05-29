@@ -1,14 +1,13 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.openapi.generator;
+
+import static java.util.Map.entry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.Map;
 import java.util.function.Predicate;
 
 import org.junit.jupiter.api.io.TempDir;
@@ -20,16 +19,25 @@ import com.sap.cloud.sdk.datamodel.openapi.generator.model.GenerationConfigurati
 import com.sap.cloud.sdk.datamodel.openapi.generator.model.GenerationResult;
 
 import io.vavr.control.Try;
-import lombok.AllArgsConstructor;
 import lombok.RequiredArgsConstructor;
 import lombok.SneakyThrows;
 
 class DataModelGeneratorIntegrationTest
 {
     @RequiredArgsConstructor
-    @AllArgsConstructor
-    private enum TestCase
+    enum TestCase
     {
+        API_CLASS_FOR_AI_SDK(
+            "api-class-for-ai-sdk",
+            "sodastore.json",
+            "com.sap.cloud.sdk.services.builder.api",
+            "com.sap.cloud.sdk.services.builder.model",
+            ApiMaturity.RELEASED,
+            true,
+            true,
+            6,
+            Map.of("aiSdkConstructor", "true", "fixRedundantIsBooleanPrefix", "true", "useFloatArrays", "true"),
+            Map.of()),
         API_CLASS_VENDOR_EXTENSION_YAML(
             "api-class-vendor-extension-yaml",
             "sodastore.yaml",
@@ -37,7 +45,10 @@ class DataModelGeneratorIntegrationTest
             "com.sap.cloud.sdk.services.apiclassvendorextension.model",
             ApiMaturity.RELEASED,
             false,
-            4),
+            true,
+            4,
+            Map.of(),
+            Map.of()),
         API_CLASS_VENDOR_EXTENSION_JSON(
             "api-class-vendor-extension-json",
             "sodastore.json",
@@ -45,7 +56,36 @@ class DataModelGeneratorIntegrationTest
             "com.sap.cloud.sdk.services.apiclassvendorextension.model",
             ApiMaturity.RELEASED,
             false,
-            6),
+            true,
+            6,
+            Map.of(),
+            Map.of()),
+        INLINEOBJECT_SCHEMA_NAME(
+            "inlineobject-schemas-enabled",
+            "sodastore.yaml",
+            "com.sap.cloud.sdk.services.inlineobject.api",
+            "com.sap.cloud.sdk.services.inlineobject.model",
+            ApiMaturity.RELEASED,
+            true,
+            true,
+            5,
+            Map.of("fixResponseSchemaTitles", "true"),
+            Map.of()),
+        PARTIAL_GENERATION(
+            "partial-generation",
+            "sodastore.json",
+            "com.sap.cloud.sdk.services.builder.api",
+            "com.sap.cloud.sdk.services.builder.model",
+            ApiMaturity.RELEASED,
+            true,
+            true,
+            4,
+            Map
+                .ofEntries(
+                    entry("excludePaths", "/sodas,/foobar/{baz}"),
+                    entry("excludeProperties", "Foo.bar,Soda.embedding,Soda.flavor,UpdateSoda.flavor,SodaWithFoo.foo"),
+                    entry("removeUnusedComponents", "true")),
+            Map.of()),
         INPUT_SPEC_WITH_UPPERCASE_FILE_EXTENSION(
             "input-spec-with-uppercase-file-extension",
             "sodastore.JSON",
@@ -53,15 +93,32 @@ class DataModelGeneratorIntegrationTest
             "com.sap.cloud.sdk.services.uppercasefileextension.model",
             ApiMaturity.RELEASED,
             false,
-            6),
-        INPUT_SPEC_WITH_ANYOF_ONEOF(
-            "input-spec-with-anyof-oneof",
-            "AggregatorNestedSchemaChild.json",
-            "com.sap.cloud.sdk.services.anyofoneof.api",
-            "com.sap.cloud.sdk.services.anyofoneof.model",
-            ApiMaturity.RELEASED,
             true,
-            7),
+            6,
+            Map.of(),
+            Map.of()),
+        ONE_OF_INTERFACES_DISABLED(
+            "oneof-interfaces-disabled",
+            "sodastore.yaml",
+            "test",
+            "test",
+            ApiMaturity.RELEASED,
+            false,
+            true,
+            9,
+            Map.of(),
+            Map.of()),
+        ONE_OF_INTERFACES_ENABLED(
+            "oneof-interfaces-enabled",
+            "sodastore.yaml",
+            "test",
+            "test",
+            ApiMaturity.BETA,
+            true,
+            true,
+            11,
+            Map.of("useOneOfInterfaces", "true", "useOneOfCreators", "true", "useFloatArrays", "true"),
+            Map.of()),
         INPUT_SPEC_WITH_BUILDER(
             "input-spec-with-builder",
             "sodastore.JSON",
@@ -69,10 +126,57 @@ class DataModelGeneratorIntegrationTest
             "com.sap.cloud.sdk.services.builder.model",
             ApiMaturity.RELEASED,
             true,
+            true,
             6,
-            "builder",
-            "build",
-            "private");
+            Map
+                .of(
+                    "pojoBuilderMethodName",
+                    "builder",
+                    "pojoBuildMethodName",
+                    "build",
+                    "pojoConstructorVisibility",
+                    "private"),
+            Map.of()),
+        REMOVE_OPERATION_ID_PREFIX(
+            "remove-operation-id-prefix",
+            "sodastore.json",
+            "com.sap.cloud.sdk.services.builder.api",
+            "com.sap.cloud.sdk.services.builder.model",
+            ApiMaturity.RELEASED,
+            true,
+            true,
+            6,
+            Map
+                .of(
+                    "removeOperationIdPrefix",
+                    "true",
+                    "removeOperationIdPrefixDelimiter",
+                    "\\.",
+                    "removeOperationIdPrefixCount",
+                    "3"),
+            Map.of()),
+        GENERATE_APIS(
+            "generate-apis",
+            "sodastore.yaml",
+            "test",
+            "test",
+            ApiMaturity.RELEASED,
+            true,
+            false,
+            7,
+            Map.of(),
+            Map.of()),
+        FILE_HANDLING(
+            "file-handling",
+            "file-handling.yaml",
+            "com.sap.cloud.sdk.services.filehandling.api",
+            "com.sap.cloud.sdk.services.filehandling.model",
+            ApiMaturity.RELEASED,
+            false,
+            true,
+            1,
+            Map.of(),
+            Map.of("File", "byte[]"));
 
         final String testCaseName;
         final String inputSpecFileName;
@@ -80,14 +184,14 @@ class DataModelGeneratorIntegrationTest
         final String modelPackageName;
         final ApiMaturity apiMaturity;
         final boolean anyOfOneOfGenerationEnabled;
+        final boolean generateApis;
         final int expectedNumberOfGeneratedFiles;
-        String methodBuilder = null;
-        String methodBuild = null;
-        String constructorVisibility = null;
+        final Map<String, String> additionalProperties;
+        final Map<String, String> typeMappings;
     }
 
     @ParameterizedTest
-    @EnumSource( TestCase.class )
+    @EnumSource( value = TestCase.class, mode = EnumSource.Mode.EXCLUDE, names = { "FILE_HANDLING" } )
     void integrationTests( final TestCase testCase, @TempDir final Path path )
         throws Throwable
     {
@@ -101,10 +205,12 @@ class DataModelGeneratorIntegrationTest
         assertThat(tempOutputDirectory).exists().isReadable().isDirectory();
         assertThat(comparisonDirectory).exists().isReadable().isDirectory();
 
-        final GenerationConfiguration generationConfiguration =
+        final var generationConfiguration =
             GenerationConfiguration
                 .builder()
+                // .debugModels(true) enable this for better mustache file debugging
                 .apiPackage(testCase.apiPackageName)
+                .generateApis(testCase.generateApis)
                 .modelPackage(testCase.modelPackageName)
                 .inputSpec(inputDirectory.resolve(testCase.inputSpecFileName).toAbsolutePath().toString())
                 .apiMaturity(testCase.apiMaturity)
@@ -112,13 +218,11 @@ class DataModelGeneratorIntegrationTest
                 .withSapCopyrightHeader(true)
                 .oneOfAnyOfGenerationEnabled(testCase.anyOfOneOfGenerationEnabled)
                 .additionalProperty("useAbstractionForFiles", "true")
-                .additionalProperty("pojoBuilderMethodName", testCase.methodBuilder)
-                .additionalProperty("pojoBuildMethodName", testCase.methodBuild)
-                .additionalProperty("pojoConstructorVisibility", testCase.constructorVisibility)
-                .build();
+                .typeMappings(testCase.typeMappings);
+        testCase.additionalProperties.forEach(generationConfiguration::additionalProperty);
 
         final Try<GenerationResult> maybeGenerationResult =
-            new DataModelGenerator().generateDataModel(generationConfiguration);
+            new DataModelGenerator().generateDataModel(generationConfiguration.build());
 
         assertThat(maybeGenerationResult.get().getGeneratedFiles()).hasSize(testCase.expectedNumberOfGeneratedFiles);
 
@@ -135,12 +239,13 @@ class DataModelGeneratorIntegrationTest
         final Path outputDirectory = getComparisonDirectory(testCase);
 
         assertThat(inputDirectory).exists().isReadable().isDirectory();
-        assertThat(inputDirectory).exists().isReadable().isDirectory();
+        assertThat(outputDirectory).exists().isReadable().isDirectory();
 
-        final GenerationConfiguration generationConfiguration =
+        final var generationConfiguration =
             GenerationConfiguration
                 .builder()
                 .apiPackage(testCase.apiPackageName)
+                .generateApis(testCase.generateApis)
                 .modelPackage(testCase.modelPackageName)
                 .inputSpec(inputDirectory.resolve(testCase.inputSpecFileName).toAbsolutePath().toString())
                 .apiMaturity(testCase.apiMaturity)
@@ -149,15 +254,14 @@ class DataModelGeneratorIntegrationTest
                 .withSapCopyrightHeader(true)
                 .oneOfAnyOfGenerationEnabled(testCase.anyOfOneOfGenerationEnabled)
                 .additionalProperty("useAbstractionForFiles", "true")
-                .additionalProperty("pojoBuilderMethodName", testCase.methodBuilder)
-                .additionalProperty("pojoBuildMethodName", testCase.methodBuild)
-                .additionalProperty("pojoConstructorVisibility", testCase.constructorVisibility)
-                .build();
+                .typeMappings(testCase.typeMappings);
+        testCase.additionalProperties.forEach(generationConfiguration::additionalProperty);
 
-        new DataModelGenerator().generateDataModel(generationConfiguration);
+        GenerationConfiguration build = generationConfiguration.build();
+        new DataModelGenerator().generateDataModel(build).onFailure(Throwable::printStackTrace);
     }
 
-    private static Path getInputDirectory( final TestCase testCase )
+    Path getInputDirectory( final TestCase testCase )
     {
         final Path testCaseDirectory = getTestCaseDirectory(testCase);
         final Path inputDirectory = testCaseDirectory.resolve("input");
@@ -167,20 +271,17 @@ class DataModelGeneratorIntegrationTest
         return inputDirectory;
     }
 
-    private static Path getTestCaseDirectory( final TestCase testCase )
+    private Path getTestCaseDirectory( final TestCase testCase )
     {
         final Path testCaseDirectory =
-            Paths
-                .get(
-                    "src/test/resources/" + DataModelGeneratorIntegrationTest.class.getSimpleName(),
-                    testCase.testCaseName);
+            Paths.get("src/test/resources/" + this.getClass().getSimpleName(), testCase.testCaseName);
 
         assertThat(testCaseDirectory).exists().isDirectory().isReadable();
 
         return testCaseDirectory;
     }
 
-    private static Path getComparisonDirectory( final TestCase testCase )
+    Path getComparisonDirectory( final TestCase testCase )
     {
         final Path testCaseDirectory = getTestCaseDirectory(testCase);
         final Path comparisonDirectory = testCaseDirectory.resolve("output");
@@ -192,7 +293,7 @@ class DataModelGeneratorIntegrationTest
 
     @SuppressWarnings( "resource" )
     @SneakyThrows
-    private static void assertThatDirectoriesHaveSameContent( final Path a, final Path b )
+    static void assertThatDirectoriesHaveSameContent( final Path a, final Path b )
     {
         final Predicate<Path> isFile = p -> p.toFile().isFile();
         Files.walk(a).filter(isFile).forEach(p -> assertThat(p).hasSameTextualContentAs(b.resolve(a.relativize(p))));

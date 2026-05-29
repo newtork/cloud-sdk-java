@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -196,7 +192,7 @@ class EnvVarDestinationLoaderTest
               {
                 "type": "HTTP",
                 "name": "%s",
-                "proxyType": "onpremise",
+                "proxyType": "Internet",
                 "description": "This destination rocks!",
                 "authentication": "BasicAuthentication"
                 "URL": "https://URL",
@@ -218,7 +214,7 @@ class EnvVarDestinationLoaderTest
         final HttpDestination httpDestination = destination.asHttp();
 
         final Option<ProxyType> proxyType = httpDestination.getProxyType();
-        assertThat(proxyType.get()).isEqualTo(ProxyType.ON_PREMISE);
+        assertThat(proxyType.get()).isEqualTo(ProxyType.INTERNET);
     }
 
     @Test
@@ -230,7 +226,7 @@ class EnvVarDestinationLoaderTest
               {
                 "type": "HTTP",
                 "name": "%s",
-                "proxyType": "onpremise",
+                "proxyType": "Internet",
                 "description": "This destination rocks!",
                 "authentication": "BasicAuthentication"
                 "URL": "https://URL",
@@ -312,7 +308,7 @@ class EnvVarDestinationLoaderTest
               {
                 "type": "HTTP",
                 "name": "%s",
-                "proxyType": "onpremise",
+                "proxyType": "Internet",
                 "description": "This destination rocks!",
                 "URL": "https://URL",
                 "username": "USER",

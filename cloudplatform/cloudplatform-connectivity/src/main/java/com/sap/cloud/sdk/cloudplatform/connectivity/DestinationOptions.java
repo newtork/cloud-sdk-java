@@ -1,10 +1,8 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
@@ -37,6 +35,18 @@ public final class DestinationOptions
     public Option<Object> get( @Nonnull final String key )
     {
         return Option.of(parameters.get(key));
+    }
+
+    /**
+     * Get all defined options.
+     *
+     * @return A set of all option keys.
+     * @since 5.22.0
+     */
+    @Nonnull
+    public Set<String> getOptionKeys()
+    {
+        return Set.copyOf(parameters.keySet());
     }
 
     /**
@@ -128,10 +138,10 @@ public final class DestinationOptions
         }
 
         /**
-         * Creates an immutable instance of {@link DestinationOptions) with whatever parameters have been set through
+         * Creates an immutable instance of {@link DestinationOptions} with whatever parameters have been set through
          * the builder and any augmenters attached to it.
          *
-         * @return An immutable instance of {@link DestinationOptions).
+         * @return An immutable instance of {@link DestinationOptions}.
          */
         @Nonnull
         public DestinationOptions build()

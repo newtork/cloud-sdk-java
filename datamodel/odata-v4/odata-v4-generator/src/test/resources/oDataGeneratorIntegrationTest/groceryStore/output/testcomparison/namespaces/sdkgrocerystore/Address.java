@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.sdkgrocerystore;
@@ -258,69 +258,69 @@ public class Address
     @Nonnull
     @Override
     protected Map<java.lang.String, Object> toMapOfFields() {
-        final Map<java.lang.String, Object> values = super.toMapOfFields();
-        values.put("Id", getId());
-        values.put("Street", getStreet());
-        values.put("City", getCity());
-        values.put("State", getState());
-        values.put("Country", getCountry());
-        values.put("PostalCode", getPostalCode());
-        values.put("Latitude", getLatitude());
-        values.put("Longitude", getLongitude());
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("Id", getId());
+        cloudSdkValues.put("Street", getStreet());
+        cloudSdkValues.put("City", getCity());
+        cloudSdkValues.put("State", getState());
+        cloudSdkValues.put("Country", getCountry());
+        cloudSdkValues.put("PostalCode", getPostalCode());
+        cloudSdkValues.put("Latitude", getLatitude());
+        cloudSdkValues.put("Longitude", getLongitude());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap(final Map<java.lang.String, Object> inputValues) {
-        final Map<java.lang.String, Object> values = Maps.newHashMap(inputValues);
+        final Map<java.lang.String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if (values.containsKey("Id")) {
-                final Object value = values.remove("Id");
-                if ((value == null)||(!value.equals(getId()))) {
-                    setId(((Integer) value));
+            if (cloudSdkValues.containsKey("Id")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Id");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getId()))) {
+                    setId(((Integer) cloudSdkValue));
                 }
             }
-            if (values.containsKey("Street")) {
-                final Object value = values.remove("Street");
-                if ((value == null)||(!value.equals(getStreet()))) {
-                    setStreet(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("Street")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Street");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getStreet()))) {
+                    setStreet(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("City")) {
-                final Object value = values.remove("City");
-                if ((value == null)||(!value.equals(getCity()))) {
-                    setCity(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("City")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("City");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getCity()))) {
+                    setCity(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("State")) {
-                final Object value = values.remove("State");
-                if ((value == null)||(!value.equals(getState()))) {
-                    setState(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("State")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("State");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getState()))) {
+                    setState(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("Country")) {
-                final Object value = values.remove("Country");
-                if ((value == null)||(!value.equals(getCountry()))) {
-                    setCountry(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("Country")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Country");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getCountry()))) {
+                    setCountry(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("PostalCode")) {
-                final Object value = values.remove("PostalCode");
-                if ((value == null)||(!value.equals(getPostalCode()))) {
-                    setPostalCode(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("PostalCode")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("PostalCode");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getPostalCode()))) {
+                    setPostalCode(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("Latitude")) {
-                final Object value = values.remove("Latitude");
-                if ((value == null)||(!value.equals(getLatitude()))) {
-                    setLatitude(((Double) value));
+            if (cloudSdkValues.containsKey("Latitude")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Latitude");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getLatitude()))) {
+                    setLatitude(((Double) cloudSdkValue));
                 }
             }
-            if (values.containsKey("Longitude")) {
-                final Object value = values.remove("Longitude");
-                if ((value == null)||(!value.equals(getLongitude()))) {
-                    setLongitude(((Double) value));
+            if (cloudSdkValues.containsKey("Longitude")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Longitude");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getLongitude()))) {
+                    setLongitude(((Double) cloudSdkValue));
                 }
             }
         }
@@ -330,7 +330,7 @@ public class Address
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Override

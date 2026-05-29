@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.generator;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -13,7 +9,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -41,7 +36,7 @@ class GeneratorReferenceTest
         workCodeModel(tempDir, false, c -> c._package(packageName)._class(className));
 
         // check package
-        final Path pathPackage = tempDir.resolve(StringUtils.replace(packageName, ".", File.separator));
+        final Path pathPackage = tempDir.resolve(packageName.replaceAll("\\.", File.separator));
         assertThat(pathPackage).exists().isDirectory();
 
         // check java file
@@ -67,7 +62,7 @@ class GeneratorReferenceTest
         workCodeModel(tempDir, true, c -> c._package(packageName)._interface(interfaceName));
 
         // check package
-        final Path pathPackage = tempDir.resolve(StringUtils.replace(packageName, ".", File.separator));
+        final Path pathPackage = tempDir.resolve(packageName.replaceAll("\\.", File.separator));
         assertThat(pathPackage).exists().isDirectory();
 
         // check java file

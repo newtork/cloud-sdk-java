@@ -1,12 +1,14 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.services;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import com.sap.cloud.sdk.datamodel.odatav4.core.BatchRequestBuilder;
 import com.sap.cloud.sdk.datamodel.odatav4.core.CountRequestBuilder;
 import com.sap.cloud.sdk.datamodel.odatav4.core.CreateRequestBuilder;
@@ -123,6 +125,16 @@ public class DefaultActionsAndFunctionsService
     @Nonnull
     public SingleValueFunctionRequestBuilder<NewComplexResult> functionWithNewResultType() {
         return new SingleValueFunctionRequestBuilder<NewComplexResult>(servicePath, "FunctionWithNewResultType", NewComplexResult.class);
+    }
+
+    @Override
+    @Nonnull
+    public SingleValueFunctionRequestBuilder<Integer> functionWithTypeDef(
+        @Nullable
+        final String functionParameter) {
+        final LinkedHashMap<String, Object> parameters = new LinkedHashMap<String, Object>();
+        parameters.put("FunctionParameter", functionParameter);
+        return new SingleValueFunctionRequestBuilder<Integer>(servicePath, "FunctionWithTypeDef", parameters, Integer.class);
     }
 
     @Override

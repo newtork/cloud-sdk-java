@@ -240,7 +240,11 @@ class OAuth2ServiceBindingDestinationLoaderTest
             sut.tryGetDestination(OPTIONS_WITH_EMPTY_BINDING).map(HttpDestinationProperties::getHeaders);
 
         assertThat(result.isFailure()).isTrue();
-        assertThat(result.getCause()).hasRootCauseExactlyInstanceOf(HttpClientException.class);
+        // The root cause can be either HttpClientException (when using DefaultOAuth2TokenService with HttpClient 4)
+        // or a security exception like CertificateException (when using HttpClient5OAuth2TokenService)
+        assertThat(result.getCause())
+            .rootCause()
+            .isInstanceOfAny(HttpClientException.class, java.security.GeneralSecurityException.class);
     }
 
     @Test
@@ -352,7 +356,7 @@ class OAuth2ServiceBindingDestinationLoaderTest
     {
         final URI proxyUrl = URI.create("http://proxyUrl:1234");
         final DefaultHttpDestination baseDestination =
-            DefaultHttpDestination.builder(baseUrl).proxyType(ProxyType.ON_PREMISE).build();
+            DefaultHttpDestination.builder(baseUrl).proxyType(ProxyType.ON_PREMISE).buildInternal();
 
         final DestinationHeaderProvider headerProviderMock = mock(DestinationHeaderProvider.class);
         when(headerProviderMock.getHeaders(any())).thenReturn(Collections.emptyList());
@@ -460,7 +464,7 @@ class OAuth2ServiceBindingDestinationLoaderTest
     {
         final URI proxyUrl = URI.create("http://proxyUrl:1234");
         final DefaultHttpDestination baseDestination =
-            DefaultHttpDestination.builder(baseUrl).proxyType(ProxyType.ON_PREMISE).build();
+            DefaultHttpDestination.builder(baseUrl).proxyType(ProxyType.ON_PREMISE).buildInternal();
         final ServiceBindingDestinationOptions options =
             ServiceBindingDestinationOptions
                 .forService(EMPTY_BINDING)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package com.sap.cloud.sdk.datamodel.odatav4.sample.namespaces.sdkgrocerystore;
@@ -84,28 +84,28 @@ public class DateRange extends VdmComplex<DateRange>
     @Override
     protected Map<String, Object> toMapOfFields()
     {
-        final Map<String, Object> values = super.toMapOfFields();
-        values.put("Start", getStart());
-        values.put("End", getEnd());
-        return values;
+        final Map<String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("Start", getStart());
+        cloudSdkValues.put("End", getEnd());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap( final Map<String, Object> inputValues )
     {
-        final Map<String, Object> values = Maps.newHashMap(inputValues);
+        final Map<String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if( values.containsKey("Start") ) {
-                final Object value = values.remove("Start");
-                if( (value == null) || (!value.equals(getStart())) ) {
-                    setStart(((OffsetDateTime) value));
+            if( cloudSdkValues.containsKey("Start") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Start");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getStart())) ) {
+                    setStart(((OffsetDateTime) cloudSdkValue));
                 }
             }
-            if( values.containsKey("End") ) {
-                final Object value = values.remove("End");
-                if( (value == null) || (!value.equals(getEnd())) ) {
-                    setEnd(((OffsetDateTime) value));
+            if( cloudSdkValues.containsKey("End") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("End");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getEnd())) ) {
+                    setEnd(((OffsetDateTime) cloudSdkValue));
                 }
             }
         }
@@ -115,7 +115,7 @@ public class DateRange extends VdmComplex<DateRange>
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Nonnull

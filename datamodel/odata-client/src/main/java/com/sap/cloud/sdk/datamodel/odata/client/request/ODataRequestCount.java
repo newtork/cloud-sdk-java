@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import javax.annotation.Nonnull;
@@ -58,7 +54,7 @@ public class ODataRequestCount extends ODataRequestRead
         @Nullable final String encodedQuery,
         @Nonnull final ODataProtocol protocol )
     {
-        super(servicePath, resourcePath.addSegment("$count"), encodedQuery, protocol);
+        super(servicePath, resourcePath.copy().addSegment("$count"), encodedQuery, protocol);
     }
 
     /**
@@ -78,7 +74,7 @@ public class ODataRequestCount extends ODataRequestRead
     {
         this(
             servicePath,
-            resourcePath.addSegment(query.getEntityOrPropertyName()),
+            resourcePath.copy().addSegment(query.getEntityOrPropertyName()),
             query.getEncodedQueryString(),
             query.getProtocol());
     }

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.requestheader;
 
 import java.util.Map;
@@ -12,7 +8,6 @@ import java.util.function.Supplier;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.cloudplatform.exception.RequestHeadersAccessException;
 import com.sap.cloud.sdk.cloudplatform.thread.Executable;
 import com.sap.cloud.sdk.cloudplatform.thread.exception.ThreadContextExecutionException;
@@ -47,7 +42,6 @@ public final class RequestHeaderAccessor
      *            The {@link RequestHeaderFacade} to use, or {@code null} if the default {@link RequestHeaderFacade}
      *            should be used.
      */
-    @Beta
     public static void setHeaderFacade( @Nullable final RequestHeaderFacade requestHeaderFacade )
     {
         headerFacade = Objects.requireNonNullElseGet(requestHeaderFacade, DefaultRequestHeaderFacade::new);

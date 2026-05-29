@@ -1,14 +1,12 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
+import static com.sap.cloud.sdk.cloudplatform.connectivity.ApacheHttpClient5FactoryBuilder.TlsUpgrade.AUTOMATIC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -87,7 +85,8 @@ class DefaultApacheHttpClient5FactoryTest
                 CLIENT_TIMEOUT,
                 MAX_CONNECTIONS,
                 MAX_CONNECTIONS_PER_ROUTE,
-                requestInterceptor);
+                requestInterceptor,
+                AUTOMATIC);
     }
 
     @Test
@@ -101,14 +100,16 @@ class DefaultApacheHttpClient5FactoryTest
                 Duration.ofSeconds(3L),
                 MAX_CONNECTIONS,
                 MAX_CONNECTIONS_PER_ROUTE,
-                requestInterceptor);
+                requestInterceptor,
+                AUTOMATIC);
 
         final ApacheHttpClient5Factory factoryWithEnoughTimeout =
             new DefaultApacheHttpClient5Factory(
                 Duration.ofSeconds(7L),
                 MAX_CONNECTIONS,
                 MAX_CONNECTIONS_PER_ROUTE,
-                requestInterceptor);
+                requestInterceptor,
+                AUTOMATIC);
 
         final ClassicHttpRequest request = new HttpGet(WIRE_MOCK_SERVER.url("/timeout"));
 
@@ -136,7 +137,8 @@ class DefaultApacheHttpClient5FactoryTest
                 Duration.ofSeconds(3L), // this timeout is also used for the connection lease
                 1,
                 MAX_CONNECTIONS_PER_ROUTE,
-                requestInterceptor);
+                requestInterceptor,
+                AUTOMATIC);
 
         final HttpClient client = sut.createHttpClient();
         final ClassicHttpRequest firstRequest = new HttpGet(WIRE_MOCK_SERVER.url("/max-connections-1"));
@@ -158,7 +160,8 @@ class DefaultApacheHttpClient5FactoryTest
                 Duration.ofSeconds(3L), // this timeout is also used for the connection lease
                 MAX_CONNECTIONS,
                 1,
-                requestInterceptor);
+                requestInterceptor,
+                AUTOMATIC);
 
         final ClassicHttpRequest firstRequest = new HttpGet(WIRE_MOCK_SERVER.url("/max-connections-per-route"));
         final ClassicHttpRequest secondRequest = new HttpGet(SECOND_WIRE_MOCK_SERVER.url("/max-connections-per-route"));
@@ -209,6 +212,21 @@ class DefaultApacheHttpClient5FactoryTest
             WIRE_MOCK_SERVER.verify(getRequestedFor(urlEqualTo("/proxy")));
             assertThat(response.getCode()).isEqualTo(HttpStatus.SC_OK);
         }
+    }
+
+    @Test
+    @SneakyThrows
+    void verifyDefaultRetryMechanism()
+    {
+        WIRE_MOCK_SERVER.stubFor(get(urlEqualTo("/too-many-requests")).willReturn(aResponse().withStatus(429)));
+        WIRE_MOCK_SERVER.stubFor(get(urlEqualTo("/temporary-error")).willReturn(aResponse().withStatus(503)));
+
+        final HttpClient client = sut.createHttpClient();
+        client.execute(new HttpGet(WIRE_MOCK_SERVER.url("/too-many-requests")), ignored -> ignored);
+        client.execute(new HttpGet(WIRE_MOCK_SERVER.url("/temporary-error")), ignored -> ignored);
+
+        WIRE_MOCK_SERVER.verify(2, getRequestedFor(urlEqualTo("/too-many-requests")));
+        WIRE_MOCK_SERVER.verify(2, getRequestedFor(urlEqualTo("/temporary-error")));
     }
 
     @SneakyThrows

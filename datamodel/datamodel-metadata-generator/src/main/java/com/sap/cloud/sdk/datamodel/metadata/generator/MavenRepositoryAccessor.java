@@ -1,16 +1,9 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.metadata.generator;
 
 import javax.annotation.Nonnull;
 
-import com.google.common.annotations.Beta;
-
 import io.vavr.control.Try;
 
-@Beta
 interface MavenRepositoryAccessor
 {
     /**

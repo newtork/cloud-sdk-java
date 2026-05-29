@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationProperty.SYSTEM_USER;
@@ -9,9 +5,7 @@ import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationProperty.S
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.annotations.Beta;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 import io.vavr.control.Option;
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +17,6 @@ import lombok.extern.slf4j.Slf4j;
  *
  * @since 4.6.0
  */
-@Beta
 @Slf4j
 public final class DestinationUtility
 {

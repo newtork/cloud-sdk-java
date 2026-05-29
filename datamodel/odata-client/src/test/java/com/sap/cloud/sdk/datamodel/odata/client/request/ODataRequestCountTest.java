@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
@@ -95,5 +91,15 @@ class ODataRequestCountTest
 
         assertThat(actual).isEqualTo(expected);
         assertThat(actual.getQueryString()).isEqualTo(expected.getQueryString());
+    }
+
+    @Test
+    void testConstructorDoesNotMutateResourcePath()
+    {
+        final ODataResourcePath resourcePath = ODataResourcePath.of(ENTITY_NAME);
+
+        new ODataRequestCount(SERVICE_PATH, resourcePath, "", ODataProtocol.V4);
+
+        assertThat(resourcePath.toString()).isEqualTo("/" + ENTITY_NAME);
     }
 }

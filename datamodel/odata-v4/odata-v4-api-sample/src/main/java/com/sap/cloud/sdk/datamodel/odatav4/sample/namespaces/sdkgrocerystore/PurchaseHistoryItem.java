@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package com.sap.cloud.sdk.datamodel.odatav4.sample.namespaces.sdkgrocerystore;
@@ -92,38 +92,38 @@ public class PurchaseHistoryItem extends VdmComplex<PurchaseHistoryItem>
     @Override
     protected Map<String, Object> toMapOfFields()
     {
-        final Map<String, Object> values = super.toMapOfFields();
-        values.put("ReceiptId", getReceiptId());
-        values.put("ProductCount", getProductCount());
-        return values;
+        final Map<String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("ReceiptId", getReceiptId());
+        cloudSdkValues.put("ProductCount", getProductCount());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap( final Map<String, Object> inputValues )
     {
-        final Map<String, Object> values = Maps.newHashMap(inputValues);
+        final Map<String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if( values.containsKey("ReceiptId") ) {
-                final Object value = values.remove("ReceiptId");
-                if( (value == null) || (!value.equals(getReceiptId())) ) {
-                    setReceiptId(((Integer) value));
+            if( cloudSdkValues.containsKey("ReceiptId") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("ReceiptId");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getReceiptId())) ) {
+                    setReceiptId(((Integer) cloudSdkValue));
                 }
             }
         }
         // structured properties
         {
-            if( values.containsKey("ProductCount") ) {
-                final Object value = values.remove("ProductCount");
-                if( value instanceof Map ) {
+            if( cloudSdkValues.containsKey("ProductCount") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("ProductCount");
+                if( cloudSdkValue instanceof Map ) {
                     if( getProductCount() == null ) {
                         setProductCount(new ProductCount());
                     }
                     @SuppressWarnings( "unchecked" )
-                    final Map<String, Object> inputMap = ((Map<String, Object>) value);
+                    final Map<String, Object> inputMap = ((Map<String, Object>) cloudSdkValue);
                     getProductCount().fromMap(inputMap);
                 }
-                if( (value == null) && (getProductCount() != null) ) {
+                if( (cloudSdkValue == null) && (getProductCount() != null) ) {
                     setProductCount(null);
                 }
             }
@@ -131,7 +131,7 @@ public class PurchaseHistoryItem extends VdmComplex<PurchaseHistoryItem>
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Nonnull

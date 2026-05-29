@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.util.ArrayList;
@@ -10,7 +6,6 @@ import java.util.Locale;
 
 import javax.annotation.Nonnull;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.cloudplatform.servlet.LocaleAccessor;
 
 import lombok.extern.slf4j.Slf4j;
@@ -23,7 +18,6 @@ import lombok.extern.slf4j.Slf4j;
  * @see DestinationProperty#DYNAMIC_SAP_LANGUAGE
  * @since 4.16.0
  */
-@Beta
 @Slf4j
 public class ErpDestinationHeaderProvider implements DestinationHeaderProvider
 {

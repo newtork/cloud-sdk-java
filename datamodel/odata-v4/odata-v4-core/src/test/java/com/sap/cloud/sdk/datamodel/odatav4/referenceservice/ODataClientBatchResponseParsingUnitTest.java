@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.referenceservice;
 
 import static com.sap.cloud.sdk.datamodel.odata.client.ODataProtocol.V4;
@@ -262,7 +258,7 @@ class ODataClientBatchResponseParsingUnitTest
         assertThat(batchResponse.getHttpResponse().getStatusLine().getStatusCode()).isEqualTo(200);
 
         // Test assertion: response parsing
-        assertThatExceptionOfType(ODataResponseException.class)
+        assertThatExceptionOfType(ODataServiceErrorException.class)
             .isThrownBy(() -> batchResponse.getResult(create1))
             .satisfies(e -> {
                 assertThat(e.getHttpCode()).isEqualTo(400);
@@ -270,7 +266,7 @@ class ODataClientBatchResponseParsingUnitTest
                 assertThat(e.getRequest()).isSameAs(create2);
             });
 
-        assertThatExceptionOfType(ODataResponseException.class)
+        assertThatExceptionOfType(ODataServiceErrorException.class)
             .isThrownBy(() -> batchResponse.getResult(create2))
             .satisfies(e -> {
                 assertThat(e.getHttpCode()).isEqualTo(400);

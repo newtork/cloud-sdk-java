@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.utility;
 
 import java.util.Locale;
@@ -12,10 +8,8 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import javax.lang.model.SourceVersion;
 
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.annotations.Beta;
 import com.google.common.base.CaseFormat;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -26,7 +20,6 @@ import lombok.Setter;
  * Represents an abstract base implementation of the {@link NamingStrategy}. It provides convenience methods (such as
  * {@link AbstractNamingStrategy#convertToJavaClassName(String, String)}) for inheritors to leverage.
  */
-@Beta
 @AllArgsConstructor
 @NoArgsConstructor
 public abstract class AbstractNamingStrategy implements NamingStrategy

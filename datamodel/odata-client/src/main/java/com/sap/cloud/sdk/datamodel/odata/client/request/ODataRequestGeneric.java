@@ -1,15 +1,11 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.TreeMap;
 import java.util.function.Supplier;
 
 import javax.annotation.Nonnull;
@@ -78,13 +74,13 @@ public abstract class ODataRequestGeneric implements ODataRequestExecutable
     /**
      * Map of HTTP header key-values which are added to the OData request.
      */
-    final Map<String, Collection<String>> headers = new HashMap<>();
+    final Map<String, Collection<String>> headers = new TreeMap<>();
 
     /**
      * Map of additional generic HTTP query parameters.
      */
     @Getter( AccessLevel.PROTECTED )
-    private final Map<String, String> queryParameters = new HashMap<>();
+    private final Map<String, String> queryParameters = new TreeMap<>();
 
     /**
      * The CSRF token retriever.
@@ -92,6 +88,12 @@ public abstract class ODataRequestGeneric implements ODataRequestExecutable
     @Nullable
     @Setter
     protected CsrfTokenRetriever csrfTokenRetriever;
+
+    /**
+     * The response buffer strategy to use for this request.
+     */
+    @Nonnull
+    ODataRequestResultFactory requestResultFactory = ODataRequestResultFactory.WITH_BUFFER;
 
     ODataRequestGeneric(
         @Nonnull final String servicePath,
@@ -233,7 +235,7 @@ public abstract class ODataRequestGeneric implements ODataRequestExecutable
     {
         return Try
             .ofSupplier(httpOperation)
-            .map(response -> new ODataRequestResultGeneric(this, response, httpClient))
+            .map(response -> requestResultFactory.create(this, response, httpClient))
             .andThenTry(ODataHealthyResponseValidator::requireHealthyResponse);
     }
 
@@ -285,7 +287,7 @@ public abstract class ODataRequestGeneric implements ODataRequestExecutable
     @Nonnull
     public Map<String, Collection<String>> getHeaders()
     {
-        return new HashMap<>(headers);
+        return new TreeMap<>(headers);
     }
 
     @Nonnull

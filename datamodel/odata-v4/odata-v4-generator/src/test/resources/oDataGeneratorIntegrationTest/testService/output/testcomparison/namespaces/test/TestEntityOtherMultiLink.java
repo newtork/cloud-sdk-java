@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.test;
@@ -97,20 +97,20 @@ public class TestEntityOtherMultiLink
     @Nonnull
     @Override
     protected Map<java.lang.String, Object> toMapOfFields() {
-        final Map<java.lang.String, Object> values = super.toMapOfFields();
-        values.put("KeyProperty", getKeyProperty());
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("KeyProperty", getKeyProperty());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap(final Map<java.lang.String, Object> inputValues) {
-        final Map<java.lang.String, Object> values = Maps.newHashMap(inputValues);
+        final Map<java.lang.String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if (values.containsKey("KeyProperty")) {
-                final Object value = values.remove("KeyProperty");
-                if ((value == null)||(!value.equals(getKeyProperty()))) {
-                    setKeyProperty(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("KeyProperty")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("KeyProperty");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getKeyProperty()))) {
+                    setKeyProperty(((java.lang.String) cloudSdkValue));
                 }
             }
         }
@@ -120,7 +120,7 @@ public class TestEntityOtherMultiLink
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Override

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.time.Duration;
@@ -17,7 +13,6 @@ import com.google.common.annotations.Beta;
  *
  * @since 4.20.0
  */
-@Beta
 public class ApacheHttpClient5CacheBuilder
 {
     @Nonnull
@@ -26,7 +21,7 @@ public class ApacheHttpClient5CacheBuilder
     /**
      * Sets the duration for which {@link HttpClient} instances will be cached.
      * <p>
-     * This is an <b>optional</b> parameter. By default, the cache duration is set to 5 minutes.
+     * This is an <b>optional</b> parameter. By default, the cache duration is set to 1 hour.
      * </p>
      *
      * @param durationInMilliseconds
@@ -34,6 +29,7 @@ public class ApacheHttpClient5CacheBuilder
      * @return This builder.
      */
     @Nonnull
+    @Beta
     public ApacheHttpClient5CacheBuilder durationInMilliseconds( final int durationInMilliseconds )
     {
         return duration(Duration.ofMillis(durationInMilliseconds));
@@ -42,7 +38,7 @@ public class ApacheHttpClient5CacheBuilder
     /**
      * Sets the duration for which {@link HttpClient} instances will be cached.
      * <p>
-     * This is an <b>optional</b> parameter. By default, the cache duration is set to 5 minutes.
+     * This is an <b>optional</b> parameter. By default, the cache duration is set to 1 hour.
      * </p>
      *
      * @param duration

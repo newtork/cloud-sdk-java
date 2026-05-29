@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import static lombok.AccessLevel.PRIVATE;
@@ -21,7 +17,6 @@ import java.util.stream.IntStream;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpHeaders;
 import org.apache.http.client.HttpClient;
 
@@ -97,6 +92,7 @@ public class ODataRequestBatch extends ODataRequestGeneric
         this.uuidProvider = uuidProvider;
         this.batchUuid = uuidProvider.get();
         this.headers.remove(HttpHeaders.ACCEPT); // batch request does not require Accept header
+        this.requestResultFactory = ODataRequestResultFactory.WITHOUT_BUFFER;
     }
 
     @Nonnull
@@ -278,7 +274,19 @@ public class ODataRequestBatch extends ODataRequestGeneric
         {
             final String versionIdentifier = request.getVersionIdentifier();
             request.addVersionIdentifierToHeaderIfPresent(versionIdentifier);
-            final String httpMethod = request.getUpdateStrategy() == UpdateStrategy.MODIFY_WITH_PATCH ? "PATCH" : "PUT";
+
+            final String httpMethod;
+            switch( request.getUpdateStrategy() ) {
+                case MODIFY_WITH_PATCH, MODIFY_WITH_PATCH_RECURSIVE_DELTA, MODIFY_WITH_PATCH_RECURSIVE_FULL:
+                    httpMethod = "PATCH";
+                    break;
+                case REPLACE_WITH_PUT:
+                    httpMethod = "PUT";
+                    break;
+                default:
+                    throw new IllegalStateException("Unexpected update strategy: " + request.getUpdateStrategy());
+            }
+
             final BatchItemSingle item =
                 new BatchItemSingle(originalRequest, request, httpMethod, request::getSerializedEntity);
             queries.add(item);
@@ -365,10 +373,15 @@ public class ODataRequestBatch extends ODataRequestGeneric
 
             this.contentId = requestBatch.contentId.getAndIncrement();
             this.request = requestSingle;
-            this.resourcePath =
-                StringUtils.removeStart(encodedRelativeUriSingleRequest, encodedServicePathBatchRequest);
+            this.resourcePath = removeStart(encodedRelativeUriSingleRequest, encodedServicePathBatchRequest);
             this.httpMethod = httpMethod;
             this.payload = payload;
+        }
+
+        @Nonnull
+        private String removeStart( @Nonnull final String string, @Nonnull final String prefix )
+        {
+            return string.startsWith(prefix) ? string.substring(prefix.length()) : string;
         }
 
         private void assertSingleAndBatchRequestAreConsistent(

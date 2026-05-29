@@ -1,12 +1,6 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator.annotation;
 
 import javax.annotation.Nonnull;
-
-import com.google.common.annotations.Beta;
 
 import lombok.Getter;
 
@@ -16,7 +10,6 @@ import lombok.Getter;
  * add parameters to annotations while generating Java code. <b>NOTE: Only primitive types, {@link String}, {@link Enum}
  * , and {@link Class} are supported.</b>
  */
-@Beta
 public class AnnotationParameter
 {
     @Getter

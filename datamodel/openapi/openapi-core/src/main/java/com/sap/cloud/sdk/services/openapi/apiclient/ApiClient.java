@@ -1,13 +1,7 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.services.openapi.apiclient;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.util.ArrayList;
@@ -37,9 +31,9 @@ import org.springframework.http.converter.json.Jackson2ObjectMapperBuilder;
 import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
-import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
+import org.springframework.web.util.UriUtils;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.annotation.PropertyAccessor;
@@ -97,7 +91,7 @@ public final class ApiClient
 
         private String collectionToString( final Collection<? extends CharSequence> collection )
         {
-            return StringUtils.collectionToDelimitedString(collection, separator);
+            return String.join(separator, collection);
         }
     }
 
@@ -601,7 +595,7 @@ public final class ApiClient
                 return Collections.singletonList(mediaType);
             }
         }
-        return MediaType.parseMediaTypes(StringUtils.arrayToCommaDelimitedString(accepts));
+        return MediaType.parseMediaTypes(String.join(",", accepts));
     }
 
     /**
@@ -694,19 +688,13 @@ public final class ApiClient
         // auth headers are added automatically by the SDK
         // updateParamsForAuth(authNames, queryParams, headerParams);
 
+        @SuppressWarnings( "deprecation" ) // spring-web:6.2.0 and later, works until <7.0.0
         final UriComponentsBuilder builder = UriComponentsBuilder.fromHttpUrl(basePath).path(path);
         if( queryParams != null ) {
             //encode the query parameters in case they contain unsafe characters
             for( final List<String> values : queryParams.values() ) {
                 if( values != null ) {
-                    for( int i = 0; i < values.size(); i++ ) {
-                        try {
-                            values.set(i, URLEncoder.encode(values.get(i), "utf8"));
-                        }
-                        catch( final UnsupportedEncodingException e ) {
-                            throw new OpenApiRequestException(e);
-                        }
-                    }
+                    values.replaceAll(queryParam -> UriUtils.encodeQueryParam(queryParam, "utf8"));
                 }
             }
             builder.queryParams(queryParams);

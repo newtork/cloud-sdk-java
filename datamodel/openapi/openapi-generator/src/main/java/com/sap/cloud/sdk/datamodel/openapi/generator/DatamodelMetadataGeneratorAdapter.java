@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.openapi.generator;
 
 import static com.sap.cloud.sdk.datamodel.metadata.generator.ApiUsageMetadata.arg;
@@ -20,9 +16,9 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import org.apache.commons.io.FilenameUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import com.sap.cloud.sdk.cloudplatform.connectivity.Destination;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 import com.sap.cloud.sdk.datamodel.metadata.generator.DatamodelMetadataGenerator;
 import com.sap.cloud.sdk.datamodel.metadata.generator.DatamodelMetadataInput;
 import com.sap.cloud.sdk.datamodel.metadata.generator.JavaServiceMethodResolver;
@@ -107,7 +103,7 @@ class DatamodelMetadataGeneratorAdapter
                 continue;
             }
 
-            final String className = StringUtils.removeEnd(file.getName(), ".java");
+            final String className = StringUtils.removeEndIgnoreCase(file.getName(), ".java");
             final String qualifiedServiceName = generationConfiguration.getApiPackage() + "." + className;
 
             final Optional<JavaServiceMethodResolver> methodResolver =

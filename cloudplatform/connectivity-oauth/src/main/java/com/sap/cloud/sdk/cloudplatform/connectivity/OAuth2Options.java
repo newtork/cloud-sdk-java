@@ -1,6 +1,8 @@
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
+import java.net.URI;
 import java.security.KeyStore;
+import java.time.Duration;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -8,11 +10,14 @@ import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.google.common.annotations.Beta;
+import com.sap.cloud.sdk.cloudplatform.connectivity.ServiceBindingDestinationOptions.OptionsEnhancer;
+import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceConfiguration.TimeLimiterConfiguration;
 
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -20,20 +25,45 @@ import lombok.extern.slf4j.Slf4j;
  *
  * @since 5.5.0
  */
-@Beta
 @AllArgsConstructor( access = AccessLevel.PRIVATE )
 @EqualsAndHashCode
 public final class OAuth2Options
 {
     /**
+     * The default timeout of 10 seconds for token retrieval.
+     *
+     * @since 5.12.0
+     */
+    public static final TimeLimiterConfiguration DEFAULT_TIMEOUT = TimeLimiterConfiguration.of(Duration.ofSeconds(10));
+
+    /**
+     * Default token cache configuration used by {@link OAuth2Service}. Effective defaults: 1 hour duration, 1000
+     * entries, 30 seconds delta and cache statistics disabled.
+     *
+     * @see com.sap.cloud.security.xsuaa.tokenflows.TokenCacheConfiguration#DEFAULT
+     * @since 5.21.0
+     */
+    public static final TokenCacheParameters DEFAULT_TOKEN_CACHE_PARAMETERS =
+        TokenCacheParameters.of(Duration.ofHours(1), 1000, Duration.ofSeconds(30));
+
+    /**
      * The default {@link OAuth2Options} instance that does not alter the token retrieval process and does not use mTLS
      * for the target system connection.
      */
-    public static final OAuth2Options DEFAULT = new OAuth2Options(false, Map.of(), null);
+    public static final OAuth2Options DEFAULT =
+        new OAuth2Options(false, Map.of(), DEFAULT_TIMEOUT, null, DEFAULT_TOKEN_CACHE_PARAMETERS, null);
 
     private final boolean skipTokenRetrieval;
     @Nonnull
     private final Map<String, String> additionalTokenRetrievalParameters;
+    /**
+     * A timeout to be applied for token retrieval.
+     *
+     * @since 5.12.0
+     */
+    @Nonnull
+    @Getter
+    private final TimeLimiterConfiguration timeLimiter;
     /**
      * The {@link KeyStore} to use for building an mTLS connection towards the <b>target system</b>. This
      * {@link KeyStore} <b>is not used</b> to build an mTLS connection towards the OAuth2 token service.
@@ -41,6 +71,24 @@ public final class OAuth2Options
     @Nullable
     @Getter
     private final KeyStore clientKeyStore;
+
+    /**
+     * Configuration for caching OAuth2 tokens.
+     *
+     * @since 5.21.0
+     */
+    @Nonnull
+    @Getter
+    private final TokenCacheParameters tokenCacheParameters;
+
+    /**
+     * Base URI of the BTP tenant API endpoint from the IAS service binding (the {@code btp-tenant-api} credential).
+     * When present, {@link OAuth2Service} uses it to derive a per-tenant token URL instead of the static {@code url}.
+     * Package-private; not part of the public API.
+     */
+    @Nullable
+    @Getter( AccessLevel.PACKAGE )
+    private final URI btpTenantApiBaseUri;
 
     /**
      * Indicates whether to skip the OAuth2 token flow.
@@ -78,13 +126,16 @@ public final class OAuth2Options
     /**
      * A builder implementation that helps with creating customized {@link OAuth2Options} instances.
      */
-    @Beta
     @Slf4j
     public static class Builder
     {
         private boolean skipTokenRetrieval = false;
         private final Map<String, String> additionalTokenRetrievalParameters = new HashMap<>();
         private KeyStore clientKeyStore;
+        private TimeLimiterConfiguration timeLimiter = DEFAULT_TIMEOUT;
+        private TokenCacheParameters tokenCacheParameters = DEFAULT_TOKEN_CACHE_PARAMETERS;
+        @Nullable
+        private URI btpTenantApiBaseUri;
 
         /**
          * Indicates whether to skip the OAuth2 token flow.
@@ -148,6 +199,43 @@ public final class OAuth2Options
         }
 
         /**
+         * Set a custom timeout for token retrieval. {@link #DEFAULT_TIMEOUT} by default.
+         *
+         * @param timeLimiter
+         *            The custom timeout configuration.
+         * @return This {@link Builder}.
+         * @since 5.12.0
+         */
+        @Nonnull
+        public Builder withTimeLimiter( @Nonnull final TimeLimiterConfiguration timeLimiter )
+        {
+            this.timeLimiter = timeLimiter;
+            return this;
+        }
+
+        /**
+         * Set a custom token cache configuration. {@link #DEFAULT_TOKEN_CACHE_PARAMETERS} by default.
+         *
+         * @param tokenCacheParameters
+         *            The custom token cache parameters.
+         * @return This {@link Builder}.
+         * @since 5.21.0
+         */
+        @Nonnull
+        public Builder withTokenCacheParameters( @Nonnull final TokenCacheParameters tokenCacheParameters )
+        {
+            this.tokenCacheParameters = tokenCacheParameters;
+            return this;
+        }
+
+        @Nonnull
+        Builder withBtpTenantApiBaseUri( @Nullable final URI btpTenantApiBaseUri )
+        {
+            this.btpTenantApiBaseUri = btpTenantApiBaseUri;
+            return this;
+        }
+
+        /**
          * Creates a new {@link OAuth2Options} instance.
          *
          * @return A new {@link OAuth2Options} instance.
@@ -166,7 +254,70 @@ public final class OAuth2Options
             return new OAuth2Options(
                 skipTokenRetrieval,
                 new HashMap<>(additionalTokenRetrievalParameters),
-                clientKeyStore);
+                timeLimiter,
+                clientKeyStore,
+                tokenCacheParameters,
+                btpTenantApiBaseUri);
         }
     }
+
+    /**
+     * Configure the timeout applied to token retrieval.
+     *
+     * @since 5.12.0
+     */
+    @Getter
+    @RequiredArgsConstructor( staticName = "of" )
+    public static class TokenRetrievalTimeout implements OptionsEnhancer<TimeLimiterConfiguration>
+    {
+        @Nonnull
+        private final TimeLimiterConfiguration value;
+    }
+
+    /**
+     * Configuration for the token <em>response</em> cache used by {@link OAuth2Service}.
+     *
+     * <p>
+     * <strong>Important:</strong> These values are passed to
+     * {@link com.sap.cloud.security.xsuaa.tokenflows.TokenCacheConfiguration} used by XSUAAs
+     * {@code DefaultOAuth2TokenService}. This cache stores the HTTP token response (including the token) and it governs
+     * the cache entry, <em>not</em> the token's lifetime.
+     *
+     * <p>
+     * Expired (or almost expired) tokens are never served, regardless of {@link #cacheDuration} as xsuaa checks
+     * <code>exp - {@link #tokenExpirationDelta}</code> before returning a cached entry.
+     *
+     * @since 5.21.0
+     */
+    @Beta
+    @Getter
+    @RequiredArgsConstructor( staticName = "of" )
+    public static class TokenCacheParameters implements OptionsEnhancer<TokenCacheParameters>
+    {
+        /**
+         * Upper bound for how long a successful token response may remain cached. A cached entry is ignored earlier if
+         * the token would be (almost) expired.
+         */
+        @Nonnull
+        private final Duration cacheDuration;
+        /**
+         * The maximum number of tokens to cache.
+         */
+        @Nonnull
+        private final Integer cacheSize;
+        /**
+         * The delta to be subtracted from the token expiration time to determine how early should a token be refreshed
+         * before it expires.
+         */
+        @Nonnull
+        private final Duration tokenExpirationDelta;
+
+        @Override
+        @Nonnull
+        public TokenCacheParameters getValue()
+        {
+            return this;
+        }
+    }
+
 }

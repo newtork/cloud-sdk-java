@@ -1,9 +1,7 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import javax.annotation.Nonnull;
@@ -12,6 +10,7 @@ import com.google.common.annotations.Beta;
 
 import io.vavr.control.Option;
 import lombok.NoArgsConstructor;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -25,6 +24,8 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
     static final String DESTINATION_TOKEN_EXCHANGE_STRATEGY_KEY = "scp.cf.destinationTokenExchangeStrategy";
     static final String X_REFRESH_TOKEN_KEY = "x-refresh-token";
     static final String X_FRAGMENT_KEY = "X-fragment-name";
+    static final String CROSS_LEVEL_SETTING_KEY = "crossLevelSetting";
+    static final String CUSTOM_HEADER_KEY = "customHeader.";
 
     private final Map<String, Object> parameters = new HashMap<>();
 
@@ -79,7 +80,6 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
      * @return The same augmenter that called this method.
      * @since 5.9.0
      */
-    @Beta
     @Nonnull
     public DestinationServiceOptionsAugmenter refreshToken( @Nonnull final String refreshToken )
     {
@@ -95,7 +95,6 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
      * @return The same augmenter that called this method.
      * @since 5.11.0
      */
-    @Beta
     @Nonnull
     public DestinationServiceOptionsAugmenter fragmentName( @Nonnull final String fragmentName )
     {
@@ -108,6 +107,93 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
                         This is not recommended, as fragment-based destinations will effectively not be cached with this strategy.\
                         Consider disabling change detection, if you frequently use destination fragments.
                         """);
+        }
+        return this;
+    }
+
+    /**
+     * Enable <a href=
+     * "https://help.sap.com/docs/connectivity/sap-btp-connectivity-cf/referring-resources-using-rest-api">cross-level
+     * consumption of destinations</a>. <strong>Note: This is an experimental feature and may not function for all
+     * destination types.</strong>
+     *
+     * @param scope
+     *            Set the scope where to look up the destination. This scope is only applied to the destination itself.
+     *            The scopes for fragments or destination chain references have to be set separately.
+     * @return The same augmenter that called this method.
+     * @since 5.22.0
+     */
+    @Beta
+    @Nonnull
+    public DestinationServiceOptionsAugmenter crossLevelConsumption( @Nonnull final CrossLevelScope scope )
+    {
+        parameters.put(CROSS_LEVEL_SETTING_KEY, scope);
+        return this;
+    }
+
+    /**
+     * Enable cross-level consumption of destinations.
+     *
+     * @since 5.22.0
+     */
+    @Beta
+    @RequiredArgsConstructor
+    public enum CrossLevelScope
+    {
+        /**
+         * Use the destination from the current subaccount.
+         */
+        SUBACCOUNT("subaccount"),
+        /**
+         * Use the destination from the provider subaccount. Behaves identical to {@link #SUBACCOUNT}, if the current
+         * tenant is the provider tenant, or the strategy {@link DestinationServiceRetrievalStrategy#ALWAYS_PROVIDER} is
+         * used.
+         */
+        PROVIDER_SUBACCOUNT("provider_subaccount"),
+        /**
+         * Use the destination from the destination service instance for the current tenant.
+         */
+        INSTANCE("instance"),
+        /**
+         * Use the destination from the destination service instance for the provider tenant. Behaves identical to
+         * {@link #INSTANCE}, if the current tenant is the provider tenant, or the strategy
+         * {@link DestinationServiceRetrievalStrategy#ALWAYS_PROVIDER} is used.
+         */
+        PROVIDER_INSTANCE("provider_instance");
+
+        private final String identifier;
+
+        /**
+         * Return the suffix to be appended to e.g. a destination or fragment name.
+         *
+         * @return The suffix including the leading '@' character.
+         */
+        @Nonnull
+        public String getSuffix()
+        {
+            return "@" + identifier;
+        }
+    }
+
+    /**
+     * Adds custom headers to the destination request. Use this to add parameters that are not directly supported by the
+     * SDK. For example, use this to achieve destination chaining.
+     * <p>
+     * <strong>Note:</strong> Any secret values added as custom headers here will <strong>not</strong> be masked in log
+     * output and may appear in plain text on debug log level.
+     * </p>
+     *
+     * @param headers
+     *            The headers to be added.
+     * @return The same augmenter that called this method.
+     * @since 5.22.0
+     */
+    @Beta
+    @Nonnull
+    public DestinationServiceOptionsAugmenter customHeaders( @Nonnull final Header... headers )
+    {
+        for( final Header header : headers ) {
+            parameters.put(CUSTOM_HEADER_KEY + header.getName(), header.getValue());
         }
         return this;
     }
@@ -134,9 +220,9 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
     {
         final Option<Object> strategy = options.get(DESTINATION_RETRIEVAL_STRATEGY_KEY);
 
-        if( strategy.isDefined() && strategy.get() instanceof String ) {
+        if( strategy.isDefined() && strategy.get() instanceof String str ) {
             return Option
-                .of(DestinationServiceRetrievalStrategy.ofIdentifier((String) strategy.get()))
+                .of(DestinationServiceRetrievalStrategy.ofIdentifier(str))
                 .onEmpty(() -> log.warn("Unsupported destination retrieval strategy: {}", strategy.get()));
         }
 
@@ -157,9 +243,9 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
     {
         final Option<Object> strategy = options.get(DESTINATION_TOKEN_EXCHANGE_STRATEGY_KEY);
 
-        if( strategy.isDefined() && strategy.get() instanceof String ) {
+        if( strategy.isDefined() && strategy.get() instanceof String str ) {
             return Option
-                .of(DestinationServiceTokenExchangeStrategy.ofIdentifier((String) strategy.get()))
+                .of(DestinationServiceTokenExchangeStrategy.ofIdentifier(str))
                 .onEmpty(() -> log.warn("Unsupported token exchange strategy: {}", strategy.get()));
         }
 
@@ -176,5 +262,34 @@ public class DestinationServiceOptionsAugmenter implements DestinationOptionsAug
     static Option<String> getFragmentName( @Nonnull final DestinationOptions options )
     {
         return options.get(X_FRAGMENT_KEY).filter(String.class::isInstance).map(String.class::cast);
+    }
+
+    @Nonnull
+    static Option<CrossLevelScope> getCrossLevelScope( @Nonnull final DestinationOptions options )
+    {
+        return options
+            .get(CROSS_LEVEL_SETTING_KEY)
+            .filter(CrossLevelScope.class::isInstance)
+            .map(CrossLevelScope.class::cast);
+    }
+
+    @Nonnull
+    static List<Header> getAdditionalHeaders( @Nonnull final DestinationOptions options )
+    {
+        return options
+            .getOptionKeys()
+            .stream()
+            .filter(it -> it.startsWith(CUSTOM_HEADER_KEY))
+            .map(it -> it.replaceFirst(CUSTOM_HEADER_KEY, ""))
+            .map(headerName -> {
+                final String headerValue =
+                    options
+                        .get(CUSTOM_HEADER_KEY + headerName)
+                        .filter(String.class::isInstance)
+                        .map(String.class::cast)
+                        .get();
+                return new Header(headerName, headerValue);
+            })
+            .toList();
     }
 }

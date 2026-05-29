@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static com.sap.cloud.sdk.cloudplatform.connectivity.MegacliteServiceBindingAccessor.CONNECTIVITY_BINDING;
@@ -123,7 +119,7 @@ class MegacliteServiceBindingDestinationLoaderTest
         assertThat(result.getSecurityConfigurationStrategy()).isEqualTo(SecurityConfigurationStrategy.FROM_PLATFORM);
         assertThat(result.getProxyType()).contains(ProxyType.INTERNET);
         assertThat(DefaultHttpDestination.fromDestination(result).customHeaderProviders)
-            .contains(DwcHeaderProvider.getInstance());
+            .hasAtLeastOneElementOfType(DwcHeaderProvider.class);
     }
 
     @Test
@@ -142,7 +138,7 @@ class MegacliteServiceBindingDestinationLoaderTest
         assertThat(result.getSecurityConfigurationStrategy()).isEqualTo(SecurityConfigurationStrategy.FROM_PLATFORM);
         assertThat(result.getProxyType()).contains(ProxyType.INTERNET);
         assertThat(DefaultHttpDestination.fromDestination(result).customHeaderProviders)
-            .contains(DwcHeaderProvider.getInstance());
+            .hasAtLeastOneElementOfType(DwcHeaderProvider.class);
     }
 
     @Test

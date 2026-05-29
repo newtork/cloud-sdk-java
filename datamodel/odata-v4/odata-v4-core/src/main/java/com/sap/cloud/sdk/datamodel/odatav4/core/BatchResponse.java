@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import java.util.List;
@@ -9,7 +5,6 @@ import java.util.Map;
 
 import javax.annotation.Nonnull;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.datamodel.odata.client.exception.ODataResponseException;
 import com.sap.cloud.sdk.datamodel.odata.client.request.ODataRequestGeneric;
 import com.sap.cloud.sdk.datamodel.odata.client.request.ODataRequestResultGeneric;
@@ -265,7 +260,6 @@ public final class BatchResponse implements AutoCloseable
      *
      * @since 4.15.0
      */
-    @Beta
     @Override
     public void close()
     {

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import javax.annotation.Nonnull;
@@ -97,6 +93,7 @@ public class DeleteRequestBuilder<EntityT extends VdmEntity<?>>
     public ModificationResponse<EntityT> execute( @Nonnull final Destination destination )
     {
         final HttpClient httpClient = HttpClientAccessor.getHttpClient(destination);
+
         final ODataRequestResultGeneric response = toRequest().execute(httpClient);
 
         return ModificationResponse.of(response, getEntity());

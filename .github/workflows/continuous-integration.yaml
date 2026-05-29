@@ -1,6 +1,8 @@
 name: "Continuous Integration"
 on:
   pull_request:
+    branches: [ "*" ]
+  push:
     branches: [ "main" ]
 
   workflow_dispatch:
@@ -32,7 +34,6 @@ on:
 
 env:
   M2_ROOT: ~/.m2/repository
-  RELEASE_ARTIFACT_NAME: "release-artifacts"
   SDK_M2_NAME: "sdk-m2" # used for the installed SDK modules within the runner's maven repository
   SDK_M2_PATH: |
     ~/.m2/repository/com/sap/cloud/sdk/**
@@ -49,12 +50,16 @@ env:
   MVN_SINGLE_THREADED_ARGS: --batch-mode --no-transfer-progress --fail-at-end --show-version --threads 1
   MVN_SKIP_CI_PLUGINS: -DskipFormatting -Denforcer.skip -Djacoco.skip -Dmdep.analyze.skip
 
+permissions: {}
+
 jobs:
   context:
     name: "Collect Context"
     outputs:
       commit: ${{ steps.calculate-commit-sha.outputs.COMMIT }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Calculate Commit SHA"
         id: calculate-commit-sha
@@ -67,23 +72,29 @@ jobs:
             echo "COMMIT=${{ github.event.pull_request.head.sha }}" >> $GITHUB_OUTPUT
             exit 0
           fi
-          echo "Unable to determine commit SHA as the workflow was not triggered by a pull request and the commit input was not provided"
+          if [[ "${{ github.event_name }}" == "push" ]]; then
+            echo "COMMIT=${{ github.sha }}" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          echo "Unable to determine commit SHA as the workflow was not triggered by a pull request or push, and the commit input was not provided"
           exit 1
 
   check-formatting:
     name: "Check Formatting"
     needs: [ context ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout Repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 
       - name: "Setup Java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: "temurin"
+          distribution: "sapmachine"
           java-version: 17
 
       - name: "Run Maven Plugins"
@@ -101,59 +112,32 @@ jobs:
     name: "Build"
     needs: [ context, check-formatting ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read # upload-artifacts does not use github-token
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 
       - name: "Setup java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: "temurin"
+          distribution: "sapmachine"
           java-version: 17
 
       - name: "Restore Dependencies"
         id: restore-dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           key: ${{ env.MAVEN_CACHE_KEY }}
           path: ${{ env.MAVEN_CACHE_DIR }}
 
       - name: "Build SDK"
         run: |
-          MVN_ARGS="${{ env.MVN_MULTI_THREADED_ARGS }} install -DskipTests -DskipFormatting"
-          
-          if [[ "${{ github.event.inputs.build-release-artifacts }}" == "true" ]]; then
-            echo "[DEBUG] Building release artifacts"
-            python .pipeline/scripts/generate-javadoc-sourcepath-properties.py
-            MVN_ARGS="$MVN_ARGS javadoc:aggregate -Pdocs"
-          fi
-
+          MVN_ARGS="${{ env.MVN_MULTI_THREADED_ARGS }} clean install -DskipTests -DskipFormatting"
           echo "[DEBUG] Running Maven with following arguments: $MVN_ARGS"
           mvn $MVN_ARGS
-          
-          if [[ "${{ github.event.inputs.build-release-artifacts }}" == "true" ]]; then
-            VERSION=$(cat latest.json | jq -r .version)
-            mkdir -p $HOME/.sdk-release
-          
-            PYTHON_ARGS="--version $VERSION --path-prefix $HOME/.sdk-release/${{ env.RELEASE_ARTIFACT_NAME }}"
-            if [[ "${{ github.event.inputs.sign-release-artifacts }}" == "true" ]]; then
-              echo "[DEBUG] Signing release artifacts"
-              PYTHON_ARGS="$PYTHON_ARGS --with-signing"
-            fi
-          
-            python .pipeline/scripts/generate-release-artifacts.py $PYTHON_ARGS
-          else
-            echo "[DEBUG] Skipping release artifact generation"
-          fi
-
-      - name: "Build Module Inventory"
-        run: >
-          python ./scripts/create_module_inventory_file.py 
-          --sdk-root-directory ./ 
-          --output-file ./module-inventory.json 
-          --script-config ./scripts/common/_maven_module/maven_module_reader_configuration.json
 
       - name: "Verify Local Changes"
         run: |
@@ -166,23 +150,15 @@ jobs:
               exit 1
           fi
 
-      - name: "Upload Release Artifacts"
-        if: ${{ github.event.inputs.build-release-artifacts == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.RELEASE_ARTIFACT_NAME }}
-          path: ~/.sdk-release/${{ env.RELEASE_ARTIFACT_NAME }}
-          retention-days: 1
-
       - name: "Upload SDK M2"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.SDK_M2_NAME }}
           path: ${{ env.SDK_M2_PATH }}
           retention-days: 1
 
       - name: "Upload SDK Targets"
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ${{ env.SDK_TARGETS_NAME }}
           path: ${{ env.SDK_TARGETS_PATH }}
@@ -192,33 +168,35 @@ jobs:
     name: "Test"
     needs: [ context, build ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 
       - name: "Setup java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: "temurin"
+          distribution: "sapmachine"
           java-version: 17
 
       - name: "Restore Dependencies"
         id: restore-dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           key: ${{ env.MAVEN_CACHE_KEY }}
           path: ${{ env.M2_ROOT }}
 
       - name: "Restore SDK M2"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.SDK_M2_NAME }}
           path: ${{ env.M2_ROOT }}
 
       - name: "Restore SDK Targets"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.SDK_TARGETS_NAME }}
 
@@ -234,6 +212,8 @@ jobs:
   static-code-analysis:
     needs: [ context, build ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     strategy:
       matrix:
         task:
@@ -255,31 +235,31 @@ jobs:
     name: "Run ${{ matrix.task.name }} Analysis"
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 
       - name: "Setup java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: "temurin"
+          distribution: "sapmachine"
           java-version: 17
 
       - name: "Restore Dependencies"
         id: restore-dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           key: ${{ env.MAVEN_CACHE_KEY }}
           path: ${{ env.M2_ROOT }}
 
       - name: "Restore SDK M2"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.SDK_M2_NAME }}
           path: ${{ env.M2_ROOT }}
 
       - name: "Restore SDK Targets"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.SDK_TARGETS_NAME }}
 
@@ -294,27 +274,30 @@ jobs:
     name: "Run CodeQL Analysis"
     needs: [ context ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write # needed for Perform CodeQL Analysis
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 
       - name: "Setup java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: "temurin"
+          distribution: "sapmachine"
           java-version: 17
 
       - name: "Restore Dependencies"
         id: restore-dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           key: ${{ env.MAVEN_CACHE_KEY }}
           path: ${{ env.MAVEN_CACHE_DIR }}
 
       - name: "Initialize CodeQL"
-        uses: github/codeql-action/init@v3
+        uses: github/codeql-action/init@v4
         with:
           languages: "java"
           queries: security-extended
@@ -326,13 +309,15 @@ jobs:
           mvn $MVN_ARGS
 
       - name: "Perform CodeQL Analysis"
-        uses: github/codeql-action/analyze@v3
+        uses: github/codeql-action/analyze@v4
         with:
           category: "/language:java"
 
   test-archetypes:
     runs-on: ubuntu-latest
     needs: [ context, build ]
+    permissions:
+      contents: read
     strategy:
       matrix:
         task:
@@ -344,20 +329,20 @@ jobs:
     name: "Test ${{ matrix.task.archetype }} Archetype"
     steps:
       - name: "Setup java"
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
-          distribution: "temurin"
+          distribution: "sapmachine"
           java-version: 17
 
       - name: "Restore Dependencies"
         id: restore-dependencies
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v5
         with:
           key: ${{ env.MAVEN_CACHE_KEY }}
           path: ${{ env.MAVEN_CACHE_DIR }}
 
       - name: "Restore SDK M2"
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: ${{ env.SDK_M2_NAME }}
           path: ${{ env.M2_ROOT }}
@@ -428,9 +413,11 @@ jobs:
     if: ${{ github.event.inputs.run-blackduck-scan == 'true' }}
     needs: [ context ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 
@@ -444,9 +431,11 @@ jobs:
     if: ${{ github.event.inputs.run-security-rating == 'true' }}
     needs: [ context ]
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # needed for Run FOSStars Rating
     steps:
       - name: "Checkout repository"
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ needs.context.outputs.commit }}
 

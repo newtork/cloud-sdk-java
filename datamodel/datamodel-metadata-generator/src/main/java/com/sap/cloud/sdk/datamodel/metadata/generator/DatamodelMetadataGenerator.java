@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.metadata.generator;
 
 import java.io.IOException;
@@ -14,7 +10,6 @@ import javax.annotation.Nonnull;
 
 import org.apache.commons.io.FilenameUtils;
 
-import com.google.common.annotations.Beta;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
@@ -24,7 +19,6 @@ import lombok.extern.slf4j.Slf4j;
  * Generates metadata about the Virtual Data Model.
  */
 @Slf4j
-@Beta
 public class DatamodelMetadataGenerator
 {
     private static final String METADATA_GENERATOR_INPUT_FILENAME = "metadata-generator-properties.json";

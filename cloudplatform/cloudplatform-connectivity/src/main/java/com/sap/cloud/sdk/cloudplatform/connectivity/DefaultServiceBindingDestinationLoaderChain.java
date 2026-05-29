@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.util.ArrayList;
@@ -11,7 +7,6 @@ import javax.annotation.Nonnull;
 
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.environment.servicebinding.api.ServiceBinding;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationNotFoundException;
@@ -42,7 +37,6 @@ import lombok.extern.slf4j.Slf4j;
  * @since 4.16.0
  */
 @Slf4j
-@Beta
 class DefaultServiceBindingDestinationLoaderChain implements ServiceBindingDestinationLoader
 {
     @Nonnull

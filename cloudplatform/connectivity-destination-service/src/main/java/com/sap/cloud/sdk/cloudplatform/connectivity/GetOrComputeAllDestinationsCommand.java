@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.util.List;
@@ -45,7 +41,7 @@ class GetOrComputeAllDestinationsCommand
 
         final CacheKey cacheKey = CacheKey.ofTenantOptionalIsolation();
 
-        cacheKey.append(destinationOptions);
+        cacheKey.append(DestinationServiceOptionsAugmenter.getRetrievalStrategy(destinationOptions));
 
         final ReentrantLock isolationLock =
             Objects.requireNonNull(isolationLocks.get(cacheKey, any -> new ReentrantLock()));

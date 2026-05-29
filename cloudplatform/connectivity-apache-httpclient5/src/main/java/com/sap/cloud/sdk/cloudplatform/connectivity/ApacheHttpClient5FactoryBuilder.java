@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.time.Duration;
@@ -17,13 +13,35 @@ import com.google.common.annotations.Beta;
  *
  * @since 4.20.0
  */
-@Beta
 public class ApacheHttpClient5FactoryBuilder
 {
     @Nonnull
     private Duration timeout = DefaultApacheHttpClient5Factory.DEFAULT_TIMEOUT;
+    private TlsUpgrade tlsUpgrade = TlsUpgrade.AUTOMATIC;
     private int maxConnectionsTotal = DefaultApacheHttpClient5Factory.DEFAULT_MAX_CONNECTIONS_TOTAL;
     private int maxConnectionsPerRoute = DefaultApacheHttpClient5Factory.DEFAULT_MAX_CONNECTIONS_PER_ROUTE;
+
+    /**
+     * Enum to control the automatic TLS upgrade feature for insecure connections.
+     *
+     * @since 5.14.0
+     */
+    @Beta
+    public enum TlsUpgrade
+    {
+        /**
+         * Automatic TLS upgrade is enabled.
+         */
+        ENABLED,
+        /**
+         * Automatic TLS upgrade is disabled.
+         */
+        DISABLED,
+        /**
+         * Automatic TLS upgrade is enabled only for {@link ProxyType#INTERNET}, default.
+         */
+        AUTOMATIC
+    }
 
     /**
      * Sets the timeout {@link HttpClient} instances created by the to-be-built {@link ApacheHttpClient5Factory} should
@@ -93,6 +111,22 @@ public class ApacheHttpClient5FactoryBuilder
     }
 
     /**
+     * Sets the {@code Upgrade} header. Only {@link ProxyType#INTERNET} has the {@code Upgrade} header by default.
+     * <p>
+     * <b>{@link TlsUpgrade#DISABLED} only works for {@link ProxyType#INTERNET}</b>
+     * <p>
+     * <b>{@link TlsUpgrade#ENABLED} only works for {@link ProxyType#ON_PREMISE}</b>
+     *
+     * @since 5.14.0
+     */
+    @Nonnull
+    public ApacheHttpClient5FactoryBuilder tlsUpgrade( @Nonnull final TlsUpgrade tlsUpgrade )
+    {
+        this.tlsUpgrade = tlsUpgrade;
+        return this;
+    }
+
+    /**
      * Sets the maximum number of parallel connections <b>per route</b> (e.g. per remote host) that can be established
      * with a {@link HttpClient} created by the to-be-built {@link ApacheHttpClient5Factory}.
      * <p>
@@ -119,6 +153,11 @@ public class ApacheHttpClient5FactoryBuilder
     @Nonnull
     public ApacheHttpClient5Factory build()
     {
-        return new DefaultApacheHttpClient5Factory(timeout, maxConnectionsTotal, maxConnectionsPerRoute, null);
+        return new DefaultApacheHttpClient5Factory(
+            timeout,
+            maxConnectionsTotal,
+            maxConnectionsPerRoute,
+            null,
+            tlsUpgrade);
     }
 }

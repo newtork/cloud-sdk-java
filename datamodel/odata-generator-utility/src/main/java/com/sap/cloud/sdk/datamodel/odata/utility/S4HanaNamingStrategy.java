@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.utility;
 
 import java.util.Collection;
@@ -9,11 +5,9 @@ import java.util.Collection;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.annotations.Beta;
 import com.google.common.base.CaseFormat;
 import com.google.common.collect.ImmutableList;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 import lombok.NoArgsConstructor;
 
@@ -21,7 +15,6 @@ import lombok.NoArgsConstructor;
  * Represents a {@link NamingStrategy}, which removes pre- and suffixes from the generated Java identifiers that are
  * typically used in S4Hana service definitions.
  */
-@Beta
 @NoArgsConstructor
 public final class S4HanaNamingStrategy extends AbstractNamingStrategy
 {
@@ -126,8 +119,8 @@ public final class S4HanaNamingStrategy extends AbstractNamingStrategy
         methodName = CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, methodName);
         methodName = appendSuffixIfNameIsReservedKeyword(methodName, "Objects");
 
-        methodName = StringUtils.removeStart(methodName, "to");
-        methodName = StringUtils.removeStart(methodName, "_");
+        methodName = StringUtils.removeStartIgnoreCase(methodName, "to");
+        methodName = StringUtils.removeStartIgnoreCase(methodName, "_");
         methodName = NamingUtils.uncapitalize(methodName);
 
         throwIfConversionResultIsNullOrEmpty(name, null, methodName, "Java method name");
@@ -141,7 +134,7 @@ public final class S4HanaNamingStrategy extends AbstractNamingStrategy
     {
         String methodName = generateNameFromProperty(name, null);
         methodName = StringUtils.removeStartIgnoreCase(methodName, "to");
-        methodName = StringUtils.removeStart(methodName, "_");
+        methodName = StringUtils.removeStartIgnoreCase(methodName, "_");
         methodName = uncapitalizeLeadingAcronym(methodName);
         methodName = appendSuffixIfNameIsReservedKeyword(methodName, "Property");
 
@@ -158,8 +151,8 @@ public final class S4HanaNamingStrategy extends AbstractNamingStrategy
         methodName = CaseFormat.UPPER_CAMEL.to(CaseFormat.LOWER_CAMEL, methodName);
         methodName = appendSuffixIfNameIsReservedKeyword(methodName, "Function");
 
-        methodName = StringUtils.removeStart(methodName, "to");
-        methodName = StringUtils.removeStart(methodName, "_");
+        methodName = StringUtils.removeStartIgnoreCase(methodName, "to");
+        methodName = StringUtils.removeStartIgnoreCase(methodName, "_");
 
         throwIfConversionResultIsNullOrEmpty(name, label, methodName, "Java function import method name");
 
@@ -256,7 +249,7 @@ public final class S4HanaNamingStrategy extends AbstractNamingStrategy
     {
         String formattedName = name.trim();
         for( final String prefixToRemove : prefixes ) {
-            if( StringUtils.startsWith(formattedName, prefixToRemove) ) {
+            if( formattedName.startsWith(prefixToRemove) ) {
                 formattedName = formattedName.substring(prefixToRemove.length());
                 break;
             }

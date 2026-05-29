@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.time.Duration;
@@ -23,7 +19,6 @@ import io.vavr.control.Try;
  *
  * @since 4.20.0
  */
-@Beta
 public interface ApacheHttpClient5Cache
 {
     /**
@@ -34,6 +29,7 @@ public interface ApacheHttpClient5Cache
      * @return A new {@code HttpClient5Cache} instance.
      */
     @Nonnull
+    @Beta
     static ApacheHttpClient5Cache newDefaultCache( @Nonnull final Duration cacheDuration )
     {
         return new DefaultApacheHttpClient5Cache(cacheDuration);
@@ -73,7 +69,6 @@ public interface ApacheHttpClient5Cache
      * Constant implementation of {@see HttpClient5Cache} with disabled the cache logic. Useful for testing and
      * troubleshooting. Don't use in production.
      */
-    @Beta
     @Nonnull
     ApacheHttpClient5Cache DISABLED = new ApacheHttpClient5Cache()
     {

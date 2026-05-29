@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.utility;
 
 import java.io.File;
@@ -16,9 +12,7 @@ import javax.xml.stream.XMLInputFactory;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.annotations.Beta;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
@@ -30,7 +24,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @NoArgsConstructor( access = AccessLevel.PRIVATE ) // utility class
-@Beta
 public class EdmxValidator
 {
 

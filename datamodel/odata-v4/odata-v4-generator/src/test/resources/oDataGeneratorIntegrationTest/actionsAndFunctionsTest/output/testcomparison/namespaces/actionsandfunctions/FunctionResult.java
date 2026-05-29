@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.actionsandfunctions;
@@ -118,27 +118,27 @@ public class FunctionResult
     @Nonnull
     @Override
     protected Map<java.lang.String, Object> toMapOfFields() {
-        final Map<java.lang.String, Object> values = super.toMapOfFields();
-        values.put("RequestId", getRequestId());
-        values.put("Message", getMessage());
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("RequestId", getRequestId());
+        cloudSdkValues.put("Message", getMessage());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap(final Map<java.lang.String, Object> inputValues) {
-        final Map<java.lang.String, Object> values = Maps.newHashMap(inputValues);
+        final Map<java.lang.String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if (values.containsKey("RequestId")) {
-                final Object value = values.remove("RequestId");
-                if ((value == null)||(!value.equals(getRequestId()))) {
-                    setRequestId(((UUID) value));
+            if (cloudSdkValues.containsKey("RequestId")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("RequestId");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getRequestId()))) {
+                    setRequestId(((UUID) cloudSdkValue));
                 }
             }
-            if (values.containsKey("Message")) {
-                final Object value = values.remove("Message");
-                if ((value == null)||(!value.equals(getMessage()))) {
-                    setMessage(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("Message")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Message");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getMessage()))) {
+                    setMessage(((java.lang.String) cloudSdkValue));
                 }
             }
         }
@@ -148,14 +148,14 @@ public class FunctionResult
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Nonnull
     @Override
     protected Map<java.lang.String, Object> toMapOfNavigationProperties() {
-        final Map<java.lang.String, Object> values = super.toMapOfNavigationProperties();
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfNavigationProperties();
+        return cloudSdkValues;
     }
 
 }

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.resilience4j;
 
 import java.util.Arrays;
@@ -192,6 +188,9 @@ public class Resilience4jDecorationStrategy implements ResilienceDecorationStrat
                 callableResult = callableResult.recover(fallbackFunction);
             }
             return callableResult.onFailure(t -> {
+                if( t instanceof ResilienceRuntimeException e ) {
+                    throw e;
+                }
                 throw new ResilienceRuntimeException(t);
             }).get();
         };

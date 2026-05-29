@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.utility;
 
 import java.util.Locale;
@@ -12,15 +8,12 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
-
-import com.google.common.annotations.Beta;
 import com.google.common.base.CaseFormat;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 /**
  * Utility class, that bundles various naming related operations. <b>This class is meant for internal usage only.</b>
  */
-@Beta
 public final class NamingUtils
 {
     private static final String FLUENT_HELPER_SUFFIX = "FluentHelper";
@@ -86,11 +79,11 @@ public final class NamingUtils
 
         formattedName =
             formattedName
-                .replace("ODataServiceFor", "")
-                .replace("RemoteApiFor", "")
-                .replace("ApiFor", "")
-                .replace("Api", "")
-                .replaceAll("Service$", "");
+                .replaceAll("O(data|DATA|Data)S(ervice|ERVICE)F(or|OR)", "")
+                .replaceAll("R(emote|EMOTE)A(pi|PI)F(or|OR)", "")
+                .replaceAll("A(pi|PI)F(or|OR)", "")
+                .replaceAll("A(pi|PI)", "")
+                .replaceAll("S(ervice|ERVICE)$", "");
 
         return formattedName;
     }

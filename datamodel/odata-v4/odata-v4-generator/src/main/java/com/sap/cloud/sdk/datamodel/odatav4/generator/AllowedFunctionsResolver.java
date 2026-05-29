@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator;
 
 import java.io.File;
@@ -12,6 +8,7 @@ import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 import java.util.stream.Collector;
 import java.util.stream.Collectors;
@@ -19,7 +16,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.olingo.commons.api.edm.Edm;
 import org.apache.olingo.commons.api.edm.EdmAnnotation;
 import org.apache.olingo.commons.api.edm.EdmEntitySet;
@@ -33,6 +29,7 @@ import com.google.common.collect.Multimap;
 import com.google.common.collect.MultimapBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 import io.vavr.control.Try;
 
@@ -113,7 +110,7 @@ class AllowedFunctionsResolver
         final Map.Entry<String, JsonElement> pathsEntry )
     {
         final String pathEntry = pathsEntry.getKey();
-        final String[] split = StringUtils.removeStart(pathEntry, "/").split("\\(");
+        final String[] split = Objects.requireNonNull(StringUtils.removeStartIgnoreCase(pathEntry, "/")).split("\\(");
         final String pathEntitySet = split[0];
 
         // Mark entity set as navigable.

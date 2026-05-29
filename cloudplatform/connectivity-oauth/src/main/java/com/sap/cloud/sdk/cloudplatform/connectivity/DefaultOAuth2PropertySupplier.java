@@ -1,12 +1,7 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.security.KeyStore;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -15,7 +10,6 @@ import java.util.List;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.environment.servicebinding.api.TypedMapView;
 import com.sap.cloud.sdk.cloudplatform.connectivity.SecurityLibWorkarounds.ZtisClientIdentity;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
@@ -37,7 +31,6 @@ import lombok.extern.slf4j.Slf4j;
  *
  * @since 4.20.0
  */
-@Beta
 @Slf4j
 public class DefaultOAuth2PropertySupplier implements OAuth2PropertySupplier
 {
@@ -134,6 +127,16 @@ public class DefaultOAuth2PropertySupplier implements OAuth2PropertySupplier
         };
     }
 
+    @Nonnull
+    @Override
+    public OAuth2Options getOAuth2Options()
+    {
+        final OAuth2Options.Builder builder = OAuth2Options.builder();
+        options.getOption(OAuth2Options.TokenRetrievalTimeout.class).peek(builder::withTimeLimiter);
+        options.getOption(OAuth2Options.TokenCacheParameters.class).peek(builder::withTokenCacheParameters);
+        return builder.build();
+    }
+
     /**
      * Get the path under which the oauth properties are stored in the service binding credentials.
      *
@@ -169,14 +172,7 @@ public class DefaultOAuth2PropertySupplier implements OAuth2PropertySupplier
         }
         final ZeroTrustIdentityService ztis = ZeroTrustIdentityService.getInstance();
 
-        final KeyStore keyStore;
-        try {
-            keyStore = ztis.getOrCreateKeyStore();
-        }
-        catch( final Exception e ) {
-            throw new CloudPlatformException("Failed to load X509 certificate for credential type X509_ATTESTED.", e);
-        }
-        return new ZtisClientIdentity(clientid, keyStore);
+        return new ZtisClientIdentity(clientid, ztis::getOrCreateKeyStore);
     }
 
     @Nonnull
@@ -339,7 +335,7 @@ public class DefaultOAuth2PropertySupplier implements OAuth2PropertySupplier
         }
         if( cls == CredentialType.class ) {
             try {
-                final T result = (T) SecurityLibWorkarounds.getCredentialType((String) value);
+                final T result = (T) CredentialType.from((String) value);
                 if( result == null ) {
                     throw new IllegalArgumentException();
                 }

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.adapter;
 
 import java.time.Duration;
@@ -57,7 +53,10 @@ final class ODataGenericConverter<JavaT> extends AbstractTypeConverter<JavaT, St
         new ODataGenericConverter<>(Duration.class, Duration::toString, Duration::parse);
 
     private static final ODataGenericConverter<byte[]> BINARY =
-        new ODataGenericConverter<>(byte[].class, Base64.getEncoder()::encodeToString, Base64.getDecoder()::decode);
+        new ODataGenericConverter<>(
+            byte[].class,
+            Base64.getEncoder()::encodeToString,
+            ODataGenericConverter::decodeBinary);
 
     private static final ODataGenericConverter<String> STRING =
         new ODataGenericConverter<>(String.class, Function.identity(), Function.identity());
@@ -76,6 +75,15 @@ final class ODataGenericConverter<JavaT> extends AbstractTypeConverter<JavaT, St
 
     private final Function<JavaT, String> serializer;
     private final Function<String, JavaT> deserializer;
+
+    @Nonnull
+    private static byte[] decodeBinary( @Nonnull final String value )
+    {
+        // Normalize URL-safe characters to standard Base64
+        final String normalized = value.replace('-', '+').replace('_', '/');
+
+        return Base64.getDecoder().decode(normalized);
+    }
 
     @Nonnull
     @Override

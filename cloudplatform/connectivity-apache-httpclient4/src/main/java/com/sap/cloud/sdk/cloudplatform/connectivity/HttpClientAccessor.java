@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import javax.annotation.Nonnull;
@@ -28,7 +24,7 @@ public final class HttpClientAccessor
      * {@code #getHttpClient(Destination)} methods.
      * <p>
      * By default, this uses the {@link DefaultHttpClientCache} implementation, which caches the {@link HttpClient} for
-     * 5 minutes.
+     * 1 hour.
      * <p>
      * <strong>CAUTION:</strong> This factory is accessed concurrently. Therefore, you have to make sure that you do not
      * introduce any concurrency issues when changing the factory. Furthermore, be aware that setting a custom factory

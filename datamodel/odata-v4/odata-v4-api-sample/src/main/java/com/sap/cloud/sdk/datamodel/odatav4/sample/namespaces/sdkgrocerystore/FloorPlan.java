@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package com.sap.cloud.sdk.datamodel.odatav4.sample.namespaces.sdkgrocerystore;
@@ -134,28 +134,28 @@ public class FloorPlan extends VdmEntity<FloorPlan>
     @Override
     protected Map<java.lang.String, Object> toMapOfFields()
     {
-        final Map<java.lang.String, Object> values = super.toMapOfFields();
-        values.put("Id", getId());
-        values.put("ImageUri", getImageUri());
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("Id", getId());
+        cloudSdkValues.put("ImageUri", getImageUri());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap( final Map<java.lang.String, Object> inputValues )
     {
-        final Map<java.lang.String, Object> values = Maps.newHashMap(inputValues);
+        final Map<java.lang.String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if( values.containsKey("Id") ) {
-                final Object value = values.remove("Id");
-                if( (value == null) || (!value.equals(getId())) ) {
-                    setId(((Integer) value));
+            if( cloudSdkValues.containsKey("Id") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Id");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getId())) ) {
+                    setId(((Integer) cloudSdkValue));
                 }
             }
-            if( values.containsKey("ImageUri") ) {
-                final Object value = values.remove("ImageUri");
-                if( (value == null) || (!value.equals(getImageUri())) ) {
-                    setImageUri(((java.lang.String) value));
+            if( cloudSdkValues.containsKey("ImageUri") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("ImageUri");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getImageUri())) ) {
+                    setImageUri(((java.lang.String) cloudSdkValue));
                 }
             }
         }
@@ -165,15 +165,15 @@ public class FloorPlan extends VdmEntity<FloorPlan>
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Nonnull
     @Override
     protected Map<java.lang.String, Object> toMapOfNavigationProperties()
     {
-        final Map<java.lang.String, Object> values = super.toMapOfNavigationProperties();
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfNavigationProperties();
+        return cloudSdkValues;
     }
 
 }

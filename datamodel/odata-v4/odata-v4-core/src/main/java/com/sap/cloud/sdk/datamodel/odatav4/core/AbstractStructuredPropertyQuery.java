@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import javax.annotation.Nonnull;
@@ -36,6 +32,9 @@ abstract class AbstractStructuredPropertyQuery<ParentEntityT extends VdmObject<?
     ProtocolQueryRead<EntityT>,
     StructuredProperty<ParentEntityT, EntityT>
 {
+    /**
+     * The delegate query.
+     */
     @Getter( AccessLevel.PROTECTED )
     protected final StructuredQuery delegateQuery;
 

@@ -1,0 +1,31 @@
+/**
+ * {{description}}{{^description}}{{classname}}{{/description}}{{#isDeprecated}}
+ * @deprecated{{/isDeprecated}}
+ */{{#isDeprecated}}
+@Deprecated{{/isDeprecated}}{{^isReleased}}
+@Beta{{/isReleased}}
+{{^model.vendorExtensions.x-monads}}
+{{>additionalOneOfTypeAnnotations}}{{>typeInfoAnnotation}}{{>xmlAnnotation}}
+{{/model.vendorExtensions.x-monads}}
+public interface {{classname}} {{#vendorExtensions.x-implements}}{{#-first}}extends {{{.}}}{{/-first}}{{^-first}}, {{{.}}}{{/-first}}{{/vendorExtensions.x-implements}} {
+{{#discriminator}}
+    Object {{propertyGetter}}();
+{{/discriminator}}
+{{#model.vendorExtensions.x-monads}}
+    /**
+     * Helper class to create {@code {{{targetType}}} } that implements {@link {{classname}}}.
+     */
+    record {{wrapperType}}(@com.fasterxml.jackson.annotation.JsonValue @Nonnull {{{targetType}}} value{{#isArray}}s{{/isArray}}) implements {{classname}} {}
+
+    /**
+     * Creator to enable deserialization of {@code {{{targetType}}} }.
+     *
+     * @param val the value to use
+     * @return a new instance of {@link {{wrapperType}}}.
+     */
+    @com.fasterxml.jackson.annotation.JsonCreator
+    @Nonnull
+    static {{wrapperType}} create{{^isPrimitive}}{{wrapperType}}{{/isPrimitive}}( @Nonnull final {{{targetType}}} val) { return new {{wrapperType}}(val); }
+
+{{/model.vendorExtensions.x-monads}}
+}

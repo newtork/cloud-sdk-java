@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.generator;
 
 import static com.sap.cloud.sdk.datamodel.odata.generator.ApiFunction.CREATE;
@@ -23,7 +19,6 @@ import java.util.Map;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 
 import com.google.common.base.Strings;
@@ -31,6 +26,7 @@ import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Table;
 import com.sap.cloud.sdk.cloudplatform.connectivity.Destination;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 import com.sap.cloud.sdk.datamodel.odata.generator.ServiceClassGenerator.ServiceClassAmplifier;
 import com.sap.cloud.sdk.datamodel.odata.generator.annotation.AnnotationStrategy;
 import com.sap.cloud.sdk.datamodel.odata.generator.annotation.EntityAnnotationModel;
@@ -512,7 +508,7 @@ class NamespaceClassGenerator
                     JMod.FINAL,
                     fieldMapClass,
                     CommonConstants.INLINE_MAP_NAME,
-                    codeModel.ref(Maps.class).staticInvoke("newHashMap").arg(inputValues));
+                    codeModel.ref(Maps.class).staticInvoke("newLinkedHashMap").arg(inputValues));
 
         body.block().directStatement("// simple properties");
         final JBlock simplePropertiesBlock = new JBlock(true, true);
@@ -600,7 +596,7 @@ class NamespaceClassGenerator
         getKeyMethod.annotate(Override.class);
         final JBlock body = getKeyMethod.body();
         final JVar v =
-            body.decl(JMod.FINAL, fieldMapClass, "result", codeModel.ref(Maps.class).staticInvoke("newHashMap"));
+            body.decl(JMod.FINAL, fieldMapClass, "result", codeModel.ref(Maps.class).staticInvoke("newLinkedHashMap"));
         for( final Map.Entry<String, EntityPropertyModel> entry : entityClassFields.entrySet() ) {
             if( entry.getValue().isKeyField() ) {
                 final String javaFieldName = entry.getValue().getJavaFieldName();

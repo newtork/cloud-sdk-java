@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.io.IOException;
@@ -17,12 +13,13 @@ import java.util.function.Supplier;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.http.HttpResponse;
-import org.apache.http.HttpStatus;
-import org.apache.http.StatusLine;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.hc.client5.http.classic.methods.HttpGet;
+import org.apache.hc.client5.http.impl.classic.BasicHttpClientResponseHandler;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.ClassicHttpResponse;
+import org.apache.hc.core5.http.HttpStatus;
 
+import com.google.common.base.Strings;
 import com.sap.cloud.environment.servicebinding.api.DefaultServiceBindingAccessor;
 import com.sap.cloud.environment.servicebinding.api.ServiceBinding;
 import com.sap.cloud.environment.servicebinding.api.ServiceIdentifier;
@@ -35,12 +32,13 @@ import com.sap.cloud.sdk.cloudplatform.exception.NoServiceBindingException;
 import io.vavr.control.Try;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 class DestinationServiceAdapter
 {
-    private static final String SERVICE_PATH = "destination-configuration/v1";
+    private static final String SERVICE_PATH = "destination-configuration";
 
     @Nonnull
     @Getter( AccessLevel.PACKAGE )
@@ -129,57 +127,62 @@ class DestinationServiceAdapter
                     serviceDestinationLoader.apply(strategy.behalf()),
                     () -> "Destination for Destination Service on behalf of " + strategy.behalf() + " not found.");
 
-        final HttpUriRequest request = prepareRequest(servicePath, strategy);
+        final ClassicHttpRequest request = prepareRequest(servicePath, strategy);
 
-        final HttpResponse response;
         try {
-            response = HttpClientAccessor.getHttpClient(serviceDestination).execute(request);
+            return ApacheHttpClient5Accessor
+                .getHttpClient(serviceDestination)
+                .execute(request, new DestinationHttpClientResponseHandler(request));
         }
         catch( final IOException e ) {
             throw new DestinationAccessException(e);
         }
-        return handleResponse(request, response);
     }
 
-    @Nonnull
-    private static String handleResponse( final HttpUriRequest request, final HttpResponse response )
+    @RequiredArgsConstructor( access = AccessLevel.PRIVATE )
+    static class DestinationHttpClientResponseHandler extends BasicHttpClientResponseHandler
     {
-        final StatusLine status = response.getStatusLine();
-        final int statusCode = status.getStatusCode();
-        final String reasonPhrase = status.getReasonPhrase();
+        final ClassicHttpRequest request;
 
-        log.debug("Destination service returned HTTP status {} ({})", statusCode, reasonPhrase);
+        @Override
+        public String handleResponse( final ClassicHttpResponse response )
+        {
+            final int statusCode = response.getCode();
+            final String reasonPhrase = response.getReasonPhrase();
 
-        if( statusCode != HttpStatus.SC_OK ) {
-            final String requestUri = request.getURI().getPath();
+            log.debug("Destination service returned HTTP status {} ({})", statusCode, reasonPhrase);
+
+            Try<String> maybeBody = Try.of(() -> handleEntity(response.getEntity()));
+            if( maybeBody.isFailure() ) {
+                final var ex =
+                    new DestinationAccessException("Failed to read body from HTTP response", maybeBody.getCause());
+                maybeBody = Try.failure(ex);
+            }
+
+            if( statusCode == HttpStatus.SC_OK ) {
+                final var ex =
+                    new DestinationAccessException("Failed to get destinations: no body returned in response.");
+                maybeBody = maybeBody.filter(it -> !Strings.isNullOrEmpty(it), () -> ex);
+                return maybeBody.get();
+            }
+
+            final String requestUri = request.getPath();
             if( statusCode == HttpStatus.SC_NOT_FOUND ) {
                 throw new DestinationNotFoundException(
                     null,
                     "Destination could not be found for path " + requestUri + ".");
-            } else {
-                throw new DestinationAccessException(
-                    String
-                        .format(
-                            "Failed to get destinations: destination service returned HTTP status %s (%S) at '%s'.,",
-                            statusCode,
-                            reasonPhrase,
-                            requestUri));
             }
-        }
-
-        try {
-            final String responseBody = HttpEntityUtil.getResponseBody(response);
-            if( responseBody == null ) {
-                throw new DestinationAccessException("Failed to get destinations: no body returned in response.");
-            }
-            return responseBody;
-        }
-        catch( final IOException e ) {
-            throw new DestinationAccessException(e);
+            final String message =
+                "Failed to get destinations: destination service responded with HTTP status %s (%S) at '%s'."
+                    .formatted(statusCode, reasonPhrase, requestUri);
+            final String messageWithBody =
+                message + " Body: %s".formatted(maybeBody.getOrElseGet(Throwable::getMessage));
+            log.error(messageWithBody);
+            throw new DestinationAccessException(message);
         }
     }
 
-    private HttpUriRequest prepareRequest( final String servicePath, final DestinationRetrievalStrategy strategy )
+    private ClassicHttpRequest prepareRequest( final String servicePath, final DestinationRetrievalStrategy strategy )
     {
         final URI requestUri;
         try {
@@ -190,19 +193,27 @@ class DestinationServiceAdapter
         }
 
         log.debug("Querying Destination Service via URI {}.", requestUri);
-        final HttpUriRequest request = new HttpGet(requestUri);
+        final ClassicHttpRequest request = new HttpGet(requestUri);
 
-        final String headerName = switch( strategy.tokenForwarding() ) {
-            case USER_TOKEN -> "x-user-token";
-            case REFRESH_TOKEN -> "x-refresh-token";
-            case NONE -> null;
-        };
-        if( headerName != null ) {
-            request.addHeader(headerName, strategy.token());
+        if( !servicePath.startsWith(DestinationService.PATH_DEFAULT)
+            && !servicePath.startsWith(DestinationService.PATH_V2) ) {
+            // additional headers and settings are only needed for single destination requests
+            return request;
+        }
+
+        switch( strategy.tokenForwarding() ) {
+            case USER_TOKEN -> request.addHeader("x-user-token", strategy.token());
+            case REFRESH_TOKEN -> request.addHeader("x-refresh-token", strategy.token());
+            case NONE -> {
+                /* nothing to do in this case */ }
         }
         if( strategy.fragment() != null ) {
             request.addHeader("x-fragment-name", strategy.fragment());
         }
+        for( final Header h : strategy.additionalHeaders() ) {
+            request.addHeader(h.getName(), h.getValue());
+        }
+
         return request;
     }
 

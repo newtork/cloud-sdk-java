@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import java.net.URI;
@@ -14,7 +10,6 @@ import javax.annotation.Nullable;
 
 import org.apache.http.HttpHeaders;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.environment.servicebinding.api.ServiceIdentifier;
 import com.sap.cloud.sdk.cloudplatform.connectivity.ServiceBindingDestinationOptions.Options;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
@@ -34,7 +29,6 @@ import lombok.extern.slf4j.Slf4j;
  * @since 4.16.0
  */
 @Slf4j
-@Beta
 public class OAuth2ServiceBindingDestinationLoader implements ServiceBindingDestinationLoader
 {
     @Nonnull
@@ -331,6 +325,9 @@ public class OAuth2ServiceBindingDestinationLoader implements ServiceBindingDest
                 .withOnBehalfOf(behalf)
                 .withTenantPropagationStrategyFrom(serviceIdentifier)
                 .withAdditionalParameters(oAuth2Options.getAdditionalTokenRetrievalParameters())
+                .withTimeLimiter(oAuth2Options.getTimeLimiter())
+                .withTokenCacheParameters(oAuth2Options.getTokenCacheParameters())
+                .withBtpTenantApiUri(oAuth2Options.getBtpTenantApiBaseUri())
                 .build();
         return new OAuth2HeaderProvider(oAuth2Service, authHeader);
     }

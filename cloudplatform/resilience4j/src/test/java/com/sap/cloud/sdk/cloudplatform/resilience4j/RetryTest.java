@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.resilience4j;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -29,8 +25,6 @@ import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceConfiguration.TimeLi
 import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceDecorator;
 import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceRuntimeException;
 import com.sap.cloud.sdk.cloudplatform.thread.exception.ThreadContextExecutionException;
-
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 
 class RetryTest
 {
@@ -173,7 +167,7 @@ class RetryTest
 
         assertThatThrownBy(wrappedCallable::call)
             .isExactlyInstanceOf(ResilienceRuntimeException.class)
-            .hasCauseExactlyInstanceOf(CallNotPermittedException.class);
+            .hasCauseExactlyInstanceOf(ThreadContextExecutionException.class);
         verify(callable, times(circuitBreakerClosedBuffer)).call();
     }
 

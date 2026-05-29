@@ -1,18 +1,11 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator.annotation;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.annotations.Beta;
-
 /**
  * Data structure representing an OData property of an entity or complex type.
  */
-@Beta
 public interface EntityPropertyAnnotationModel
 {
     /**

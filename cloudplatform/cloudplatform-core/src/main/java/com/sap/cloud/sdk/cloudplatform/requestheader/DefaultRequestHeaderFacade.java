@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.requestheader;
 
 import java.util.concurrent.Callable;
@@ -9,7 +5,6 @@ import java.util.concurrent.Callable;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.cloudplatform.thread.ThreadContextAccessor;
 import com.sap.cloud.sdk.cloudplatform.thread.ThreadContextExecutor;
 
@@ -18,7 +13,6 @@ import io.vavr.control.Try;
 /**
  * Default implementation of the {@link RequestHeaderFacade} interface.
  */
-@Beta
 public class DefaultRequestHeaderFacade implements RequestHeaderFacade
 {
     @Nonnull

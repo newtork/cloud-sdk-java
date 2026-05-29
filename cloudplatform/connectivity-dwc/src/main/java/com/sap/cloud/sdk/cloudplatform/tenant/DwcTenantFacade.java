@@ -1,12 +1,8 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
 package com.sap.cloud.sdk.cloudplatform.tenant;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.cloudplatform.DwcHeaderUtils;
 import com.sap.cloud.sdk.cloudplatform.tenant.exception.TenantAccessException;
 import com.sap.cloud.sdk.cloudplatform.thread.ThreadContext;
@@ -17,7 +13,6 @@ import io.vavr.control.Try;
 /**
  * Represents a specific {@link DefaultTenantFacade} that is used when running on the SAP Deploy with Confidence stack.
  */
-@Beta
 public class DwcTenantFacade extends DefaultTenantFacade
 {
     private static final String TENANT = TenantThreadContextListener.PROPERTY_TENANT;

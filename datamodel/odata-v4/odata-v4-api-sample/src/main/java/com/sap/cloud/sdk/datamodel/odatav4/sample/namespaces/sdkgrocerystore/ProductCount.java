@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package com.sap.cloud.sdk.datamodel.odatav4.sample.namespaces.sdkgrocerystore;
@@ -87,28 +87,28 @@ public class ProductCount extends VdmComplex<ProductCount>
     @Override
     protected Map<String, Object> toMapOfFields()
     {
-        final Map<String, Object> values = super.toMapOfFields();
-        values.put("ProductId", getProductId());
-        values.put("Quantity", getQuantity());
-        return values;
+        final Map<String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("ProductId", getProductId());
+        cloudSdkValues.put("Quantity", getQuantity());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap( final Map<String, Object> inputValues )
     {
-        final Map<String, Object> values = Maps.newHashMap(inputValues);
+        final Map<String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if( values.containsKey("ProductId") ) {
-                final Object value = values.remove("ProductId");
-                if( (value == null) || (!value.equals(getProductId())) ) {
-                    setProductId(((Integer) value));
+            if( cloudSdkValues.containsKey("ProductId") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("ProductId");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getProductId())) ) {
+                    setProductId(((Integer) cloudSdkValue));
                 }
             }
-            if( values.containsKey("Quantity") ) {
-                final Object value = values.remove("Quantity");
-                if( (value == null) || (!value.equals(getQuantity())) ) {
-                    setQuantity(((Integer) value));
+            if( cloudSdkValues.containsKey("Quantity") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Quantity");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getQuantity())) ) {
+                    setQuantity(((Integer) cloudSdkValue));
                 }
             }
         }
@@ -118,7 +118,7 @@ public class ProductCount extends VdmComplex<ProductCount>
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Nonnull

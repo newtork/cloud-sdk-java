@@ -1,13 +1,10 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collections;
 
+import org.apache.http.HttpHeaders;
 import org.junit.jupiter.api.Test;
 
 import com.sap.cloud.sdk.datamodel.odatav4.referenceservice.namespaces.trippin.Location;
@@ -29,7 +26,8 @@ class BoundActionTest
 
         assertThat(action.toRequest().getRelativeUri()).hasToString(targetUrl);
         assertThat(action.toRequest().getActionParameters()).hasToString("{}");
-        assertThat(action.toRequest().getHeaders()).containsEntry("ETag", Collections.singletonList("some-etag"));
+        assertThat(action.toRequest().getHeaders())
+            .containsEntry(HttpHeaders.IF_MATCH, Collections.singletonList("some-etag"));
     }
 
     @Test
@@ -42,7 +40,7 @@ class BoundActionTest
 
         assertThat(action.toRequest().getRelativeUri()).hasToString(targetUrl);
         assertThat(action.toRequest().getActionParameters()).hasToString("{}");
-        assertThat(action.toRequest().getHeaders()).doesNotContainEntry("ETag", Collections.singletonList("some-etag"));
+        assertThat(action.toRequest().getHeaders()).doesNotContainKey(HttpHeaders.IF_MATCH);
     }
 
     @Test

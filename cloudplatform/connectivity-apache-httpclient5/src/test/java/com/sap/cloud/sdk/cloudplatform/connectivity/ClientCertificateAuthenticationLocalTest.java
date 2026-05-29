@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.anyUrl;
@@ -41,9 +37,14 @@ import lombok.SneakyThrows;
 
 class ClientCertificateAuthenticationLocalTest
 {
-    private static final String CCA_PASSWORD = "cca-password";
-    private static final String JKS_PATH =
-        "src/test/resources/" + ClientCertificateAuthenticationLocalTest.class.getSimpleName() + "/client-cert.pkcs12";
+    private static final String JKS_PREFIX =
+        "src/test/resources/" + ClientCertificateAuthenticationLocalTest.class.getSimpleName();
+    private static final String SERVER_TRUST_STORE = JKS_PREFIX + "/certs/truststore.jks";
+    private static final String SERVER_TRUST_STORE_PASS = "changeit";
+    private static final String SERVER_KEY_STORE = JKS_PREFIX + "/certs/server.jks";
+    private static final String SERVER_KEY_STORE_PASS = "changeit";
+    private static final String CLIENT_KEY_STORE = JKS_PREFIX + "/certs/client1.p12";
+    private static final String CLIENT_KEY_STORE_PASS = "changeit";
 
     @RegisterExtension
     static final WireMockExtension server =
@@ -75,7 +76,7 @@ class ClientCertificateAuthenticationLocalTest
                     .authenticationType(AuthenticationType.CLIENT_CERTIFICATE_AUTHENTICATION)
                     .proxyType(ProxyType.INTERNET)
                     .keyStore(getClientKeyStore())
-                    .keyStorePassword(CCA_PASSWORD)
+                    .keyStorePassword(CLIENT_KEY_STORE_PASS)
                     .trustAllCertificates()
                     .build());
 
@@ -86,7 +87,7 @@ class ClientCertificateAuthenticationLocalTest
 
         assertThat(context.getUserToken()).isNotNull();
         assertThat(context.getUserToken()).isInstanceOf(X500Principal.class);
-        assertThat(context.getUserToken(X500Principal.class).getName()).contains("CN=localhost");
+        assertThat(((X500Principal) context.getUserToken()).getName()).contains("CN=client1");
 
         // assert keystore methods have been used
         Mockito.verify(destination).getKeyStorePassword();
@@ -126,8 +127,11 @@ class ClientCertificateAuthenticationLocalTest
             .httpDisabled(true)
             .dynamicHttpsPort()
             .needClientAuth(true)
-            .trustStorePath(JKS_PATH)
-            .trustStorePassword(CCA_PASSWORD)
+            .keystorePath(SERVER_KEY_STORE)
+            .keystorePassword(SERVER_KEY_STORE_PASS)
+            .keyManagerPassword(SERVER_KEY_STORE_PASS)
+            .trustStorePath(SERVER_TRUST_STORE)
+            .trustStorePassword(SERVER_TRUST_STORE_PASS)
             .trustStoreType("JKS");
     }
 
@@ -138,7 +142,7 @@ class ClientCertificateAuthenticationLocalTest
             NoSuchAlgorithmException
     {
         final KeyStore keyStore = KeyStore.getInstance("PKCS12");
-        keyStore.load(new FileInputStream(JKS_PATH), CCA_PASSWORD.toCharArray());
+        keyStore.load(new FileInputStream(CLIENT_KEY_STORE), CLIENT_KEY_STORE_PASS.toCharArray());
         return keyStore;
     }
 }

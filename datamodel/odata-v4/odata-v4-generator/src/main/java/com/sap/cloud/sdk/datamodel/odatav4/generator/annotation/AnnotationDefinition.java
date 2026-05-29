@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator.annotation;
 
 import java.lang.annotation.Annotation;
@@ -10,8 +6,6 @@ import java.util.LinkedList;
 import java.util.List;
 
 import javax.annotation.Nonnull;
-
-import com.google.common.annotations.Beta;
 
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
@@ -22,7 +16,6 @@ import lombok.Getter;
  * generated Java code.
  */
 @EqualsAndHashCode
-@Beta
 public class AnnotationDefinition
 {
     @Getter

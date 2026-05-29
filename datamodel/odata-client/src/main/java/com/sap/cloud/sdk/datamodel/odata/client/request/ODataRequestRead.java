@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import java.net.URI;
@@ -11,6 +7,7 @@ import javax.annotation.Nullable;
 
 import org.apache.http.client.HttpClient;
 
+import com.google.common.annotations.Beta;
 import com.google.common.net.UrlEscapers;
 import com.sap.cloud.sdk.datamodel.odata.client.ODataProtocol;
 import com.sap.cloud.sdk.datamodel.odata.client.expression.ODataResourcePath;
@@ -104,7 +101,7 @@ public class ODataRequestRead extends ODataRequestGeneric
     {
         this(
             servicePath,
-            entityPath.addSegment(query.getEntityOrPropertyName()),
+            entityPath.copy().addSegment(query.getEntityOrPropertyName()),
             query.getEncodedQueryString(),
             query.getProtocol());
     }
@@ -137,5 +134,16 @@ public class ODataRequestRead extends ODataRequestGeneric
                 ? tryExecute(request::requestGet, httpClient)
                 : tryExecuteWithCsrfToken(httpClient, request::requestGet);
         return result.get();
+    }
+
+    /**
+     * Disable pre-buffering of http response entity.
+     */
+    @Beta
+    @Nonnull
+    public ODataRequestResultResource.Executable withoutResponseBuffering()
+    {
+        requestResultFactory = ODataRequestResultFactory.WITHOUT_BUFFER;
+        return httpClient -> (ODataRequestResultResource) this.execute(httpClient);
     }
 }

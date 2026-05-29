@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.request;
 
 import java.util.ArrayList;
@@ -11,9 +7,11 @@ import java.util.Map;
 import java.util.TreeMap;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 
 import org.apache.http.Header;
 import org.apache.http.HttpResponse;
+import org.apache.http.StatusLine;
 
 /**
  * Generic type of an OData request result.
@@ -35,6 +33,17 @@ public interface ODataRequestResult
      */
     @Nonnull
     HttpResponse getHttpResponse();
+
+    /**
+     * Get the HTTP response object status line.
+     *
+     * @return the StatusLine.
+     */
+    @Nullable
+    default StatusLine getStatusLine()
+    {
+        return getHttpResponse().getStatusLine();
+    }
 
     /**
      * Get the iterable list of HTTP response header names.

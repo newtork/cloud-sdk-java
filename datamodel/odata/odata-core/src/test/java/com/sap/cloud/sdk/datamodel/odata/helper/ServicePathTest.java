@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.helper;
 
 import static java.lang.String.format;
@@ -36,7 +32,6 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.github.tomakehurst.wiremock.junit5.WireMockTest;
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.annotations.JsonAdapter;
 import com.google.gson.annotations.SerializedName;
@@ -278,7 +273,7 @@ class ServicePathTest
 
     private static String createPayloadMultiple( final String... payloads )
     {
-        return createPayloadSingle(format("{\"results\":[%s]}", Joiner.on(',').join(payloads)));
+        return createPayloadSingle(format("{\"results\":[%s]}", String.join(",", payloads)));
     }
 
     private static String createTestEntity( final String id, final String rel )

@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.generator;
 
 import javax.annotation.Nonnull;
@@ -59,16 +55,6 @@ final class DeprecationUtils
             serviceField.annotate(SuppressWarnings.class).param("value", "deprecation");
         }
     }
-
-    /**
-     * Adds javadoc and annotations regarding states such as deprecation if necessary.
-     *
-     * @param affectedClass
-     *            The class to add information to.
-     * @param service
-     *            The service to take the status information from.
-     *
-     */
 
     /**
      * Adds javadoc and annotations regarding states such as deprecation if necessary.

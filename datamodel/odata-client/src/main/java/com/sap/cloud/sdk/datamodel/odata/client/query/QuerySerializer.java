@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.client.query;
 
 import java.util.ArrayList;
@@ -14,7 +10,6 @@ import java.util.stream.Collectors;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableMap;
 import com.sap.cloud.sdk.datamodel.odata.client.ODataProtocol;
 import com.sap.cloud.sdk.datamodel.odata.client.expression.OrderExpression;
@@ -54,14 +49,15 @@ class QuerySerializer
                     .map(q -> String.format(parameterString, q))
                     .forEach(parameters::add));
 
-        if( query.isRoot() ) {
-            query
-                .getCustomParameters()
-                .forEach(( key, value ) -> parameters.add(key + "=" + conditionalEncode(value, applyEncoding)));
+        for( final Map.Entry<String, String> customParam : query.getCustomParameters().entrySet() ) {
+            final String key = customParam.getKey();
+            if( query.getProtocol().allowCustomQueryParameter(query.isRoot(), key) ) {
+                parameters.add(key + "=" + conditionalEncode(customParam.getValue(), applyEncoding));
+            }
         }
 
         final String queryElementSeparator = query.isRoot() ? SEPARATOR_ROOT_QUERY : SEPARATOR_SUB_QUERY;
-        return Joiner.on(queryElementSeparator).join(parameters);
+        return String.join(queryElementSeparator, parameters);
     }
 
     /**
@@ -73,7 +69,7 @@ class QuerySerializer
     private static String selectorsToQueryString( @Nonnull final StructuredQuery q, final boolean applyEncoding )
     {
         final List<String> selectors = getSelectors(q, applyEncoding);
-        return Joiner.on(",").join(selectors);
+        return String.join(",", selectors);
     }
 
     /**
@@ -121,7 +117,7 @@ class QuerySerializer
     private static String expansionsToQueryString( @Nonnull final StructuredQuery q, final boolean applyEncoding )
     {
         final List<String> filters = getExpansions(q, applyEncoding);
-        return Joiner.on(",").join(filters);
+        return String.join(",", filters);
     }
 
     /**
@@ -173,7 +169,7 @@ class QuerySerializer
         final List<String> filters =
             q.getFilters().stream().map(filter -> filter.getExpression(q.getProtocol())).collect(Collectors.toList());
 
-        return conditionalEncode(Joiner.on(" and ").join(filters), applyEncoding);
+        return conditionalEncode(String.join(" and ", filters), applyEncoding);
     }
 
     /**

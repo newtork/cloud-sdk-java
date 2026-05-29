@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.s4hana.connectivity.rfc;
 
 import java.lang.reflect.Type;
@@ -20,6 +16,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 class ResultElementJsonDeserializer implements JsonDeserializer<ResultElement>
 {
+    /**
+     * The factory used to create the {@link ResultElement} instances.
+     */
     protected final GsonResultElementFactory resultElementFactory;
 
     /**

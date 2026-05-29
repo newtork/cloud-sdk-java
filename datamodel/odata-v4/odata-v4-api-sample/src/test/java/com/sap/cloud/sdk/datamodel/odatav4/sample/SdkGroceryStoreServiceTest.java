@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.sample;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.options;
@@ -11,7 +7,6 @@ import java.math.BigDecimal;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -120,15 +115,17 @@ class SdkGroceryStoreServiceTest
                 .build();
 
         final Customer customer = Customer.builder().id(1337).build();
+        customer.setVersionIdentifier("123");
+
         final ActionResponseCollection<PurchaseHistoryItem> historyItems =
             service
                 .forEntity(customer)
                 .applyAction(
                     Customer
                         .filterPurchaseHistory(
-                            Collections.singleton(Receipt.builder().customerId(1337).id(4242).build()),
-                            Arrays.asList("milk", "eggs"),
-                            Arrays.asList(ProductCategory.DAIRY, ProductCategory.MEAT),
+                            List.of(Receipt.builder().customerId(1337).id(4242).build()),
+                            List.of("milk", "eggs"),
+                            List.of(ProductCategory.DAIRY, ProductCategory.MEAT),
                             dateRange))
                 .execute(destination);
 

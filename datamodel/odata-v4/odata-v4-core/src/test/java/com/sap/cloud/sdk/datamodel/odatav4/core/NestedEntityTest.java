@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.delete;
@@ -176,6 +172,19 @@ class NestedEntityTest
         final ODataRequestCount count = service.forEntity(personByKey).navigateTo(Person.TO_TRIPS).count().toRequest();
 
         assertThat(count.getRelativeUri()).hasToString("/TripPinServiceRW/People('russellwhyte')/Trips/$count");
+    }
+
+    @Test
+    void testCountNestedTripToRequestIsStable()
+    {
+        final Person personByKey = Person.builder().userName("russellwhyte").build();
+        final CountRequestBuilder<Trip> countBuilder =
+            service.forEntity(personByKey).navigateTo(Person.TO_TRIPS).count();
+
+        assertThat(countBuilder.toRequest().getRelativeUri())
+            .hasToString("/TripPinServiceRW/People('russellwhyte')/Trips/$count");
+        assertThat(countBuilder.toRequest().getRelativeUri())
+            .hasToString("/TripPinServiceRW/People('russellwhyte')/Trips/$count");
     }
 
     @Test

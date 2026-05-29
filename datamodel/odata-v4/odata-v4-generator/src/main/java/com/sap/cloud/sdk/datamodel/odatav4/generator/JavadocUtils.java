@@ -1,13 +1,8 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odatav4.generator;
 
 import java.util.Collection;
 import java.util.LinkedList;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Strings;
 import com.sun.codemodel.JDefinedClass;
 import com.sun.codemodel.JDocComment;
@@ -125,7 +120,7 @@ class JavadocUtils
         }
 
         if( !parameterFacetsStrings.isEmpty() ) {
-            parameterConstraintsString += Joiner.on(", ").join(parameterFacetsStrings);
+            parameterConstraintsString += String.join(", ", parameterFacetsStrings);
         } else {
             parameterConstraintsString += "none";
         }

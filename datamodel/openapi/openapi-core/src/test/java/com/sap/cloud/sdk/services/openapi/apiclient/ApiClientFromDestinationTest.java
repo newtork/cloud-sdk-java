@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.services.openapi.apiclient;
 
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -28,9 +24,9 @@ class ApiClientFromDestinationTest
     {
         final HttpDestination testDestination = DefaultHttpDestination.builder(SERVER.baseUrl()).build();
 
-        final MyTestAbstractOpenApiService service = new MyTestAbstractOpenApiService(testDestination);
+        final MyTestAbstractOpenApiService springService = new MyTestAbstractOpenApiService(testDestination);
 
-        service.foo();
+        springService.foo();
     }
 
     @Test
@@ -38,12 +34,13 @@ class ApiClientFromDestinationTest
     {
         final HttpDestination testDestination = DefaultHttpDestination.builder(SERVER.baseUrl()).build();
 
-        final MyExceptionThrowingServiceAbstract service = new MyExceptionThrowingServiceAbstract(testDestination);
+        final MyExceptionThrowingSpringServiceAbstract springService =
+            new MyExceptionThrowingSpringServiceAbstract(testDestination);
 
-        assertThatExceptionOfType(IllegalAccessException.class).isThrownBy(service::foo);
+        assertThatExceptionOfType(IllegalAccessException.class).isThrownBy(springService::foo);
     }
 
-    private class MyTestAbstractOpenApiService extends AbstractOpenApiService
+    private static class MyTestAbstractOpenApiService extends AbstractOpenApiService
     {
         public MyTestAbstractOpenApiService( final Destination destination )
         {
@@ -56,9 +53,9 @@ class ApiClientFromDestinationTest
         }
     }
 
-    private static class MyExceptionThrowingServiceAbstract extends AbstractOpenApiService
+    private static class MyExceptionThrowingSpringServiceAbstract extends AbstractOpenApiService
     {
-        public MyExceptionThrowingServiceAbstract( final Destination destination )
+        public MyExceptionThrowingSpringServiceAbstract( final Destination destination )
         {
             super(destination);
         }

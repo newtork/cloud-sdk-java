@@ -1,12 +1,6 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.utility;
 
 import javax.annotation.Nonnull;
-
-import com.google.common.annotations.Beta;
 
 import lombok.NoArgsConstructor;
 
@@ -14,7 +8,6 @@ import lombok.NoArgsConstructor;
  * Represents the default {@link NamingStrategy} implementation, which generates syntactically correct Java names
  * without doing any additional modifications.
  */
-@Beta
 @NoArgsConstructor
 public class SimpleNamingStrategy extends AbstractNamingStrategy
 {

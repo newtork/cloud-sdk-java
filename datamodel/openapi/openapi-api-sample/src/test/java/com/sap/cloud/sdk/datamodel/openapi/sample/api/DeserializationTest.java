@@ -1,11 +1,10 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.openapi.sample.api;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import java.util.List;
+import java.util.Map;
 
 import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,6 +36,7 @@ class DeserializationTest
               "name": "Cola",
               "brand": "Coca-Cola",
               "quantity": 100,
+              "packaging" : "new-value",
               "price": 1.5,
               "id": 0
             }
@@ -44,7 +44,14 @@ class DeserializationTest
         stub(responseBody);
 
         final SodaWithId expected =
-            SodaWithId.create().name("Cola").brand("Coca-Cola").quantity(100).price(1.5f).id(0L);
+            SodaWithId
+                .create()
+                .name("Cola")
+                .brand("Coca-Cola")
+                .quantity(100)
+                .price(1.5f)
+                .id(0L)
+                .packaging(SodaWithId.PackagingEnum.UNKNOWN_DEFAULT_OPEN_API);
 
         final SodaWithId actual = sut.sodasIdGet(1L);
 
@@ -87,6 +94,7 @@ class DeserializationTest
     }
 
     @Test
+    @SuppressWarnings( "deprecation" )
     void testUnexpectedAdditionalField()
     {
         responseBody = """
@@ -100,8 +108,31 @@ class DeserializationTest
         final SodaWithId actual = sut.sodasIdGet(1L);
 
         assertThat(actual.getName()).isEqualTo("Cola");
+        assertThat(actual.toMap())
+            .containsExactlyInAnyOrderEntriesOf(Map.of("name", "Cola", "unexpectedField", List.of()));
+        assertThat(actual.toMap().get("doesNotExist")).isNull();
         assertThat(actual.getCustomFieldNames()).containsExactly("unexpectedField");
         assertThat(actual.getCustomField("unexpectedField")).asInstanceOf(InstanceOfAssertFactories.LIST).isEmpty();
+    }
+
+    @Test
+    void testBinaryResponse()
+    {
+        final byte[] binaryData = "binary file content".getBytes();
+        WireMock
+            .stubFor(
+                WireMock
+                    .get(WireMock.urlMatching("/sodas/download/\\d+"))
+                    .willReturn(
+                        WireMock
+                            .aResponse()
+                            .withStatus(200)
+                            .withHeader("Content-Type", "application/octet-stream")
+                            .withBody(binaryData)));
+
+        final byte[] result = sut.sodasDownloadIdGet(1L);
+        assertThat(result).isNotNull();
+        assertThat(result).isEqualTo(binaryData);
     }
 
     private void stub( String responseBody )

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package com.sap.cloud.sdk.datamodel.odatav4.sample.namespaces.sdkgrocerystore;
@@ -118,6 +118,26 @@ public class Receipt extends VdmEntity<Receipt> implements VdmEntitySet
             "ProductCounts",
             ProductCount.class);
     /**
+     * Constraints: Nullable
+     * <p>
+     * Original property name from the Odata EDM: <b>properties</b>
+     * </p>
+     *
+     * @return The properties contained in this {@link VdmEntity}.
+     */
+    @Nullable
+    @ElementName( "properties" )
+    private java.util.Collection<ProductCount> properties;
+    /**
+     * Use with available request builders to apply the <b>properties</b> complex property to query operations.
+     *
+     */
+    public final static com.sap.cloud.sdk.datamodel.odatav4.core.ComplexProperty.Collection<Receipt, ProductCount> PROPERTIES =
+        new com.sap.cloud.sdk.datamodel.odatav4.core.ComplexProperty.Collection<Receipt, ProductCount>(
+            Receipt.class,
+            "properties",
+            ProductCount.class);
+    /**
      * Navigation property <b>Customer</b> for <b>Receipt</b> to single <b>Customer</b>.
      *
      */
@@ -203,6 +223,21 @@ public class Receipt extends VdmEntity<Receipt> implements VdmEntitySet
         this.productCounts = productCounts;
     }
 
+    /**
+     * Constraints: Nullable
+     * <p>
+     * Original property name from the Odata EDM: <b>properties</b>
+     * </p>
+     *
+     * @param properties
+     *            The properties to set.
+     */
+    public void setProperties( @Nullable final java.util.Collection<ProductCount> properties )
+    {
+        rememberChangedField("properties", this.properties);
+        this.properties = properties;
+    }
+
     @Override
     protected String getEntityCollection()
     {
@@ -222,76 +257,96 @@ public class Receipt extends VdmEntity<Receipt> implements VdmEntitySet
     @Override
     protected Map<String, Object> toMapOfFields()
     {
-        final Map<String, Object> values = super.toMapOfFields();
-        values.put("Id", getId());
-        values.put("CustomerId", getCustomerId());
-        values.put("TotalAmount", getTotalAmount());
-        values.put("ProductCounts", getProductCounts());
-        return values;
+        final Map<String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("Id", getId());
+        cloudSdkValues.put("CustomerId", getCustomerId());
+        cloudSdkValues.put("TotalAmount", getTotalAmount());
+        cloudSdkValues.put("ProductCounts", getProductCounts());
+        cloudSdkValues.put("properties", getProperties());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap( final Map<String, Object> inputValues )
     {
-        final Map<String, Object> values = Maps.newHashMap(inputValues);
+        final Map<String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if( values.containsKey("Id") ) {
-                final Object value = values.remove("Id");
-                if( (value == null) || (!value.equals(getId())) ) {
-                    setId(((Integer) value));
+            if( cloudSdkValues.containsKey("Id") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Id");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getId())) ) {
+                    setId(((Integer) cloudSdkValue));
                 }
             }
-            if( values.containsKey("CustomerId") ) {
-                final Object value = values.remove("CustomerId");
-                if( (value == null) || (!value.equals(getCustomerId())) ) {
-                    setCustomerId(((Integer) value));
+            if( cloudSdkValues.containsKey("CustomerId") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("CustomerId");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getCustomerId())) ) {
+                    setCustomerId(((Integer) cloudSdkValue));
                 }
             }
-            if( values.containsKey("TotalAmount") ) {
-                final Object value = values.remove("TotalAmount");
-                if( (value == null) || (!value.equals(getTotalAmount())) ) {
-                    setTotalAmount(((BigDecimal) value));
+            if( cloudSdkValues.containsKey("TotalAmount") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("TotalAmount");
+                if( (cloudSdkValue == null) || (!cloudSdkValue.equals(getTotalAmount())) ) {
+                    setTotalAmount(((BigDecimal) cloudSdkValue));
                 }
             }
         }
         // structured properties
         {
-            if( values.containsKey("ProductCounts") ) {
-                final Object value = values.remove("ProductCounts");
-                if( value instanceof Iterable ) {
+            if( cloudSdkValues.containsKey("ProductCounts") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("ProductCounts");
+                if( cloudSdkValue instanceof Iterable ) {
                     final LinkedList<ProductCount> productCounts = new LinkedList<ProductCount>();
-                    for( Object properties : ((Iterable<?>) value) ) {
-                        if( properties instanceof Map ) {
-                            final ProductCount item = new ProductCount();
+                    for( Object cloudSdkProperties : ((Iterable<?>) cloudSdkValue) ) {
+                        if( cloudSdkProperties instanceof Map ) {
+                            final ProductCount cloudSdkItem = new ProductCount();
                             @SuppressWarnings( "unchecked" )
-                            final Map<String, Object> inputMap = ((Map<String, Object>) value);
-                            item.fromMap(inputMap);
-                            productCounts.add(item);
+                            final Map<String, Object> inputMap = ((Map<String, Object>) cloudSdkValue);
+                            cloudSdkItem.fromMap(inputMap);
+                            productCounts.add(cloudSdkItem);
                         }
                     }
                     setProductCounts(productCounts);
                 }
-                if( (value == null) && (getProductCounts() != null) ) {
+                if( (cloudSdkValue == null) && (getProductCounts() != null) ) {
                     setProductCounts(null);
+                }
+            }
+            if( cloudSdkValues.containsKey("properties") ) {
+                final Object cloudSdkValue = cloudSdkValues.remove("properties");
+                if( cloudSdkValue instanceof Iterable ) {
+                    final LinkedList<ProductCount> properties = new LinkedList<ProductCount>();
+                    for( Object cloudSdkProperties : ((Iterable<?>) cloudSdkValue) ) {
+                        if( cloudSdkProperties instanceof Map ) {
+                            final ProductCount cloudSdkItem = new ProductCount();
+                            @SuppressWarnings( "unchecked" )
+                            final Map<String, Object> inputMap = ((Map<String, Object>) cloudSdkValue);
+                            cloudSdkItem.fromMap(inputMap);
+                            properties.add(cloudSdkItem);
+                        }
+                    }
+                    setProperties(properties);
+                }
+                if( (cloudSdkValue == null) && (getProperties() != null) ) {
+                    setProperties(null);
                 }
             }
         }
         // navigation properties
         {
-            if( (values).containsKey("Customer") ) {
-                final Object value = (values).remove("Customer");
-                if( value instanceof Map ) {
+            if( (cloudSdkValues).containsKey("Customer") ) {
+                final Object cloudSdkValue = (cloudSdkValues).remove("Customer");
+                if( cloudSdkValue instanceof Map ) {
                     if( toCustomer == null ) {
                         toCustomer = new Customer();
                     }
                     @SuppressWarnings( "unchecked" )
-                    final Map<String, Object> inputMap = ((Map<String, Object>) value);
+                    final Map<String, Object> inputMap = ((Map<String, Object>) cloudSdkValue);
                     toCustomer.fromMap(inputMap);
                 }
             }
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Override
@@ -304,11 +359,11 @@ public class Receipt extends VdmEntity<Receipt> implements VdmEntitySet
     @Override
     protected Map<String, Object> toMapOfNavigationProperties()
     {
-        final Map<String, Object> values = super.toMapOfNavigationProperties();
+        final Map<String, Object> cloudSdkValues = super.toMapOfNavigationProperties();
         if( toCustomer != null ) {
-            (values).put("Customer", toCustomer);
+            (cloudSdkValues).put("Customer", toCustomer);
         }
-        return values;
+        return cloudSdkValues;
     }
 
     /**
@@ -330,12 +385,12 @@ public class Receipt extends VdmEntity<Receipt> implements VdmEntitySet
     /**
      * Overwrites the associated <b>Customer</b> entity for the loaded navigation property <b>Customer</b>.
      *
-     * @param value
+     * @param cloudSdkValue
      *            New <b>Customer</b> entity.
      */
-    public void setCustomer( final Customer value )
+    public void setCustomer( final Customer cloudSdkValue )
     {
-        toCustomer = value;
+        toCustomer = cloudSdkValue;
     }
 
     /**
@@ -347,23 +402,23 @@ public class Receipt extends VdmEntity<Receipt> implements VdmEntitySet
 
         private Customer toCustomer;
 
-        private Receipt.ReceiptBuilder toCustomer( final Customer value )
+        private Receipt.ReceiptBuilder toCustomer( final Customer cloudSdkValue )
         {
-            toCustomer = value;
+            toCustomer = cloudSdkValue;
             return this;
         }
 
         /**
          * Navigation property <b>Customer</b> for <b>Receipt</b> to single <b>Customer</b>.
          *
-         * @param value
+         * @param cloudSdkValue
          *            The Customer to build this Receipt with.
          * @return This Builder to allow for a fluent interface.
          */
         @Nonnull
-        public Receipt.ReceiptBuilder customer( final Customer value )
+        public Receipt.ReceiptBuilder customer( final Customer cloudSdkValue )
         {
-            return toCustomer(value);
+            return toCustomer(cloudSdkValue);
         }
 
     }

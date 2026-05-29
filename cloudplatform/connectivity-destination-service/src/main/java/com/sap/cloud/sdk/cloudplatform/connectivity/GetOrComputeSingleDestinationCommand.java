@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceTokenExchangeStrategy.EXCHANGE_ONLY;
@@ -12,13 +8,13 @@ import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
+import java.util.function.Function;
 import java.util.function.Supplier;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
 import com.github.benmanes.caffeine.cache.Cache;
-import com.google.common.base.Functions;
 import com.sap.cloud.sdk.cloudplatform.cache.CacheKey;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
 import com.sap.cloud.sdk.cloudplatform.security.principal.exception.PrincipalAccessException;
@@ -277,7 +273,7 @@ class GetOrComputeSingleDestinationCommand
         return destination
             .get(DestinationProperty.CERTIFICATES)
             .toStream()
-            .flatMap(Functions.identity())
+            .flatMap(Function.identity())
             .map(t -> ((DestinationServiceV1Response.DestinationCertificate) t).getExpiryTimestamp())
             .filter(Objects::nonNull)
             .min()
@@ -290,7 +286,7 @@ class GetOrComputeSingleDestinationCommand
         return destination
             .get(DestinationProperty.AUTH_TOKENS)
             .toStream()
-            .flatMap(Functions.identity())
+            .flatMap(Function.identity())
             .map(t -> ((DestinationServiceV1Response.DestinationAuthToken) t).getExpiryTimestamp())
             .filter(Objects::nonNull)
             .min()

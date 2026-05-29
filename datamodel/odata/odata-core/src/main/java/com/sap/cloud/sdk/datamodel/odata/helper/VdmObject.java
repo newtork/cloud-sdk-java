@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.odata.helper;
 
 import java.util.HashMap;
@@ -66,7 +62,7 @@ public abstract class VdmObject<ObjectT>
     /**
      * Returns all custom field names and values of this object.
      *
-     * @return All names & values of custom fields as a map.
+     * @return All names &amp; values of custom fields as a map.
      */
     @JsonAnyGetter
     @Nonnull

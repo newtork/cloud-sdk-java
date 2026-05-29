@@ -1,11 +1,12 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.openapi.generator;
 
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+import javax.annotation.Nonnull;
 
 import org.apache.maven.plugin.AbstractMojo;
 import org.apache.maven.plugin.MojoExecutionException;
@@ -107,7 +108,7 @@ public class DataModelGeneratorMojo extends AbstractMojo
     private Boolean sapCopyrightHeader;
 
     /**
-     * Defines whether to delete the output directory prior to the generation.
+     * Defines whether to delete the generated files from output directory prior to the generation.
      */
     @Parameter( property = "openapi.generate.deleteOutputDirectory", defaultValue = "false" )
     private boolean deleteOutputDirectory;
@@ -117,6 +118,30 @@ public class DataModelGeneratorMojo extends AbstractMojo
      */
     @Parameter( property = "openapi.generate.enableOneOfAnyOfGeneration", defaultValue = "false" )
     private boolean enableOneOfAnyOfGeneration;
+
+    /**
+     * Generate model classes. Default is true.
+     */
+    @Parameter( property = "openapi.generate.generateModels", defaultValue = "true" )
+    private boolean generateModels;
+
+    /**
+     * Generate API classes (client classes). Default is true.
+     */
+    @Parameter( property = "openapi.generate.generateApis", defaultValue = "true" )
+    private boolean generateApis;
+
+    /**
+     * Type mappings to override OpenAPI specification types and the types used in your generated code.
+     */
+    @Parameter( property = "openapi.generate.typeMappings" )
+    private List<String> typeMappings;
+
+    /**
+     * Import mappings to specify alternative imports statement to use for a given class name.
+     */
+    @Parameter( property = "openapi.generate.importMappings" )
+    private List<String> importMappings;
 
     /**
      * Defines a list of additional properties that will be passed to the Java generator.
@@ -179,6 +204,10 @@ public class DataModelGeneratorMojo extends AbstractMojo
                     .deleteOutputDirectory(deleteOutputDirectory)
                     .additionalProperties(additionalProperties)
                     .oneOfAnyOfGenerationEnabled(enableOneOfAnyOfGeneration)
+                    .generateModels(generateModels)
+                    .generateApis(generateApis)
+                    .typeMappings(parseMapping(typeMappings))
+                    .importMappings(parseMapping(importMappings))
                     .build());
     }
 
@@ -188,4 +217,16 @@ public class DataModelGeneratorMojo extends AbstractMojo
         this.outputDirectory = outputDirectory;
     }
 
+    @Nonnull
+    private Map<String, String> parseMapping( @Nonnull final List<String> mappings )
+    {
+        return mappings
+            .stream()
+            .filter(Objects::nonNull)
+            .filter(line -> line.contains("="))
+            .map(line -> line.split("=", 2))
+            .map(parts -> new String[] { parts[0].trim(), parts[1].trim() })
+            .filter(parts -> !parts[0].isEmpty() && !parts[1].isEmpty())
+            .collect(Collectors.toMap(parts -> parts[0], parts -> parts[1]));
+    }
 }

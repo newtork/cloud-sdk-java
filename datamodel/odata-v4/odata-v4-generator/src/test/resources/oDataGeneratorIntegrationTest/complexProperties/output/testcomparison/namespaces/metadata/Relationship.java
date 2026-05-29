@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.metadata;
@@ -82,34 +82,34 @@ public class Relationship
     @Nonnull
     @Override
     protected Map<java.lang.String, Object> toMapOfFields() {
-        final Map<java.lang.String, Object> values = super.toMapOfFields();
-        values.put("Description", getDescription());
-        values.put("FirstName", getFirstName());
-        values.put("LastName", getLastName());
-        return values;
+        final Map<java.lang.String, Object> cloudSdkValues = super.toMapOfFields();
+        cloudSdkValues.put("Description", getDescription());
+        cloudSdkValues.put("FirstName", getFirstName());
+        cloudSdkValues.put("LastName", getLastName());
+        return cloudSdkValues;
     }
 
     @Override
     protected void fromMap(final Map<java.lang.String, Object> inputValues) {
-        final Map<java.lang.String, Object> values = Maps.newHashMap(inputValues);
+        final Map<java.lang.String, Object> cloudSdkValues = Maps.newLinkedHashMap(inputValues);
         // simple properties
         {
-            if (values.containsKey("Description")) {
-                final Object value = values.remove("Description");
-                if ((value == null)||(!value.equals(getDescription()))) {
-                    setDescription(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("Description")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("Description");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getDescription()))) {
+                    setDescription(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("FirstName")) {
-                final Object value = values.remove("FirstName");
-                if ((value == null)||(!value.equals(getFirstName()))) {
-                    setFirstName(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("FirstName")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("FirstName");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getFirstName()))) {
+                    setFirstName(((java.lang.String) cloudSdkValue));
                 }
             }
-            if (values.containsKey("LastName")) {
-                final Object value = values.remove("LastName");
-                if ((value == null)||(!value.equals(getLastName()))) {
-                    setLastName(((java.lang.String) value));
+            if (cloudSdkValues.containsKey("LastName")) {
+                final Object cloudSdkValue = cloudSdkValues.remove("LastName");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getLastName()))) {
+                    setLastName(((java.lang.String) cloudSdkValue));
                 }
             }
         }
@@ -119,7 +119,7 @@ public class Relationship
         // navigation properties
         {
         }
-        super.fromMap(values);
+        super.fromMap(cloudSdkValues);
     }
 
     @Nonnull

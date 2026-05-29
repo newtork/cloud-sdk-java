@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.datamodel.metadata.generator;
 
 import java.util.ArrayList;
@@ -11,14 +7,11 @@ import java.util.stream.Collectors;
 
 import javax.annotation.Nonnull;
 
-import com.google.common.annotations.Beta;
-
 import lombok.Value;
 
 /**
  * Metadata about API usage.
  */
-@Beta
 public interface ApiUsageMetadata
 {
     /**

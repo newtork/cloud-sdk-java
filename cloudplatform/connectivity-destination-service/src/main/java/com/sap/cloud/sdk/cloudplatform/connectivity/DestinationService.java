@@ -1,17 +1,20 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
 package com.sap.cloud.sdk.cloudplatform.connectivity;
+
+import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceOptionsAugmenter.getRetrievalStrategy;
+import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceRetrievalStrategy.CURRENT_TENANT;
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
 import java.util.function.Function;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
@@ -22,7 +25,6 @@ import javax.annotation.Nullable;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 
 import com.github.benmanes.caffeine.cache.Caffeine;
-import com.google.common.annotations.Beta;
 import com.google.common.collect.Streams;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
@@ -55,11 +57,10 @@ import lombok.extern.slf4j.Slf4j;
 @SuppressWarnings( "PMD.TooManyStaticImports" )
 public class DestinationService implements DestinationLoader
 {
-    private static final String PATH_DEFAULT = "/destinations/";
-
-    private static final String PATH_SERVICE_INSTANCE = "/instanceDestinations";
-
-    private static final String PATH_SUBACCOUNT = "/subaccountDestinations";
+    static final String PATH_DEFAULT = "/v1/destinations/";
+    static final String PATH_V2 = "/v2/destinations/";
+    private static final String PATH_SERVICE_INSTANCE = "/v1/instanceDestinations";
+    private static final String PATH_SUBACCOUNT = "/v1/subaccountDestinations";
 
     static final TimeLimiterConfiguration DEFAULT_TIME_LIMITER =
         TimeLimiterConfiguration.of().timeoutDuration(Duration.ofSeconds(6));
@@ -125,14 +126,52 @@ public class DestinationService implements DestinationLoader
         Try<Destination>
         tryGetDestination( @Nonnull final String destinationName, @Nonnull final DestinationOptions options )
     {
+        final Option<Exception> validationError = validateDestinationLookup(destinationName, options);
+        if( validationError.isDefined() ) {
+            return Try.failure(validationError.get());
+        }
         return Cache.getOrComputeDestination(this, destinationName, options, this::loadAndParseDestination);
+    }
+
+    Option<Exception> validateDestinationLookup( final String destinationName, final DestinationOptions options )
+    {
+        final Option<Exception> validLookup = Option.none();
+        if( !Cache.isEnabled() ) {
+            return validLookup;
+        }
+        if( !Cache.preLookupCheckEnabled ) {
+            return validLookup;
+        }
+        if( Cache.isUsingExperimentalFeatures(options) ) {
+            final String msg =
+                "Using pre-lookup check together with either fragments, cross-level options, or custom headers might lead to unexpected behaviour. Pre-lookup check is skipped.";
+            log.warn(msg);
+            return validLookup;
+        }
+
+        final DestinationServiceRetrievalStrategy strategy = getRetrievalStrategy(options).getOrElse(CURRENT_TENANT);
+        final Collection<DestinationProperties> cachedDestinations = getAllDestinationProperties(strategy);
+        final Predicate<DestinationProperties> pred = p -> p.get(DestinationProperty.NAME).contains(destinationName);
+        if( cachedDestinations.stream().anyMatch(pred) ) {
+            return validLookup;
+        }
+
+        final String msgFormat = "Destination %s was not found among the destinations for %s.";
+        final String msg = String.format(msgFormat, destinationName, strategy);
+        return Option.some(new DestinationNotFoundException(destinationName, msg));
     }
 
     Destination loadAndParseDestination( final String destName, final DestinationOptions options )
         throws DestinationAccessException,
             DestinationNotFoundException
     {
-        final String servicePath = PATH_DEFAULT + destName;
+        final String servicePath =
+            DestinationServiceOptionsAugmenter
+                .getCrossLevelScope(options)
+                .map(DestinationServiceOptionsAugmenter.CrossLevelScope::getSuffix)
+                .map(s -> PATH_V2 + destName + s)
+                .getOrElse(PATH_DEFAULT + destName);
+
         final Function<DestinationRetrievalStrategy, DestinationServiceV1Response> destinationRetriever =
             strategy -> resilientCall(() -> retrieveDestination(strategy, servicePath), singleDestResilience);
 
@@ -174,7 +213,7 @@ public class DestinationService implements DestinationLoader
     }
 
     /**
-     * Fetches all destination properties from the BTP Destination Service.
+     * Fetches all destination properties from the BTP Destination Service on behalf of the current tenant.
      * <p>
      * <strong>Caution: This will not perform any authorization flows for the destinations.</strong> Destinations
      * obtained this way should only be used for accessing the properties of the destination configuration. For
@@ -184,21 +223,43 @@ public class DestinationService implements DestinationLoader
      * destination at service instance level takes precedence.
      *
      * @return A list of destination properties.
+     * @see DestinationService#getAllDestinationProperties(DestinationServiceRetrievalStrategy)
      * @since 5.1.0
      */
     @Nonnull
     public Collection<DestinationProperties> getAllDestinationProperties()
     {
-        return new ArrayList<>(
-            Cache
-                .getOrComputeAllDestinations(
-                    DestinationOptions.builder().build(),
-                    this::getAllDestinationsByRetrievalStrategy)
-                .get());
+        return getAllDestinationProperties(CURRENT_TENANT);
     }
 
     /**
-     * Fetches the properties of a specific destination from the BTP Destination Service.
+     * Fetches all destination properties from the BTP Destination Service.
+     * <p>
+     * <strong>Caution: This will not perform any authorization flows for the destinations.</strong> Destinations
+     * obtained this way should only be used for accessing the properties of the destination configuration. For
+     * obtaining full destination objects, use {@link #tryGetDestination(String, DestinationOptions)} instead.
+     * </p>
+     * In case there exists a destination with the same name on service instance and on sub-account level, the
+     * destination at service instance level takes precedence.
+     *
+     * @param retrievalStrategy
+     *            Strategy for loading destinations in a multi-tenant application.
+     * @return A list of destination properties.
+     * @since 5.12.0
+     */
+    @Nonnull
+    public Collection<DestinationProperties> getAllDestinationProperties(
+        @Nonnull final DestinationServiceRetrievalStrategy retrievalStrategy )
+    {
+        final var augmenter = DestinationServiceOptionsAugmenter.augmenter().retrievalStrategy(retrievalStrategy);
+        final var options = DestinationOptions.builder().augmentBuilder(augmenter).build();
+        return new ArrayList<>(
+            Cache.getOrComputeAllDestinations(options, this::getAllDestinationsByRetrievalStrategy).get());
+    }
+
+    /**
+     * Fetches the properties of a specific destination from the BTP Destination Service on behalf of the current
+     * tenant.
      * <p>
      * <strong>Caution: This will not perform any authorization flows for the destination.</strong> Destinations
      * obtained this way should only be used for accessing the properties of the destination configuration. For
@@ -235,7 +296,8 @@ public class DestinationService implements DestinationLoader
      * @param options
      *            Destination configuration object.
      * @return A Try iterable of CF destinations.
-     * @deprecated since 5.1.0. Use {@link #getAllDestinationProperties()} instead.
+     * @deprecated since 5.1.0. Use {@link #getAllDestinationProperties()} and
+     *             {@link #getAllDestinationProperties(DestinationServiceRetrievalStrategy)} instead.
      */
     @Nonnull
     @Deprecated
@@ -366,7 +428,6 @@ public class DestinationService implements DestinationLoader
      * @since 4.3.0
      */
     @Slf4j
-    @Beta
     public static final class Cache
     {
         /**
@@ -403,6 +464,7 @@ public class DestinationService implements DestinationLoader
 
         private static boolean cacheEnabled = true;
         private static boolean changeDetectionEnabled = true;
+        private static boolean preLookupCheckEnabled = true;
 
         static {
             recreateSingleCache();
@@ -418,6 +480,18 @@ public class DestinationService implements DestinationLoader
         static boolean isChangeDetectionEnabled()
         {
             return changeDetectionEnabled;
+        }
+
+        /**
+         * Disables checking if a destination exists before trying to call it directly when invoking
+         * {@link #tryGetDestination}. All available destinations can be found with
+         * {@link #getAllDestinationProperties}.
+         *
+         * @since 5.26.0
+         */
+        public static void disablePreLookupCheck()
+        {
+            preLookupCheckEnabled = false;
         }
 
         @Nonnull
@@ -473,6 +547,7 @@ public class DestinationService implements DestinationLoader
                 cacheEnabled = true;
             }
             changeDetectionEnabled = true;
+            preLookupCheckEnabled = true;
 
             sizeLimit = Option.some(DEFAULT_SIZE_LIMIT);
             expirationDuration = Option.some(DEFAULT_EXPIRATION_DURATION);
@@ -630,11 +705,9 @@ public class DestinationService implements DestinationLoader
          * <strong>Caution:</strong> Using this operation will lead to a re-creation of the destination cache. As a
          * consequence, all existing cache entries will be lost.
          *
-         * @deprecated since 5.2.0. Change detection mode is enabled by default
-         *
          * @since 4.7.0
+         * @deprecated since 5.2.0. Change detection mode is enabled by default
          */
-        @Beta
         @Deprecated
         public static void enableChangeDetection()
         {
@@ -673,7 +746,6 @@ public class DestinationService implements DestinationLoader
          *
          * @since 5.2.0
          */
-        @Beta
         public static void disableChangeDetection()
         {
             throwIfDisabled();
@@ -827,6 +899,11 @@ public class DestinationService implements DestinationLoader
             @Nullable
             final GetOrComputeAllDestinationsCommand getAllCommand;
             if( changeDetectionEnabled ) {
+                if( isUsingExperimentalFeatures(options) ) {
+                    final String msg =
+                        "Using change detection together with either fragments, cross-level options, or custom headers is discouraged and might lead to unexpected caching behaviour.";
+                    log.warn(msg);
+                }
                 getAllCommand =
                     GetOrComputeAllDestinationsCommand
                         .prepareCommand(
@@ -858,9 +935,26 @@ public class DestinationService implements DestinationLoader
                 return destinationDownloader.apply(options);
             }
 
+            if( isUsingExperimentalFeatures(options) ) {
+                final String msg =
+                    "Using caching together with either fragments, cross-level options, or custom headers is discouraged and might lead to unexpected caching behaviour.";
+                log.warn(msg);
+            }
+
             return GetOrComputeAllDestinationsCommand
                 .prepareCommand(options, instanceAll(), isolationLocks(), destinationDownloader)
                 .execute();
+        }
+
+        static boolean isUsingExperimentalFeatures( @Nonnull final DestinationOptions options )
+        {
+            final String[] featureNames =
+                {
+                    DestinationServiceOptionsAugmenter.X_FRAGMENT_KEY,
+                    DestinationServiceOptionsAugmenter.CROSS_LEVEL_SETTING_KEY,
+                    DestinationServiceOptionsAugmenter.CUSTOM_HEADER_KEY };
+            final Set<String> keys = options.getOptionKeys();
+            return keys.stream().anyMatch(s -> Arrays.stream(featureNames).anyMatch(s::startsWith));
         }
 
         private Cache()
@@ -882,7 +976,6 @@ public class DestinationService implements DestinationLoader
      * @return A builder to prepare a customised instance.
      * @since 4.4.0
      */
-    @Beta
     @Nonnull
     public static Builder builder()
     {
@@ -894,7 +987,6 @@ public class DestinationService implements DestinationLoader
      *
      * @since 4.4.0
      */
-    @Beta
     @NoArgsConstructor( access = AccessLevel.PRIVATE )
     public static final class Builder
     {

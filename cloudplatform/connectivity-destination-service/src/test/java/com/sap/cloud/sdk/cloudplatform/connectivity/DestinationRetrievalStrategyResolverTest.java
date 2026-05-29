@@ -1,7 +1,3 @@
-/*
- * Copyright (c) 2024 SAP SE or an SAP affiliate company. All rights reserved.
- */
-
 package com.sap.cloud.sdk.cloudplatform.connectivity;
 
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationRetrievalStrategy.withRefreshToken;
@@ -13,12 +9,10 @@ import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceRet
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceTokenExchangeStrategy.EXCHANGE_ONLY;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceTokenExchangeStrategy.FORWARD_USER_TOKEN;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceTokenExchangeStrategy.LOOKUP_ONLY;
-import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceTokenExchangeStrategy.LOOKUP_THEN_EXCHANGE;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.OnBehalfOf.NAMED_USER_CURRENT_TENANT;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.OnBehalfOf.TECHNICAL_USER_CURRENT_TENANT;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.OnBehalfOf.TECHNICAL_USER_PROVIDER;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.XsuaaTokenMocker.mockXsuaaToken;
-import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -30,6 +24,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Function;
 
@@ -213,7 +208,8 @@ class DestinationRetrievalStrategyResolverTest
                     .executeWithTenant(
                         c._3(),
                         () -> softly
-                            .assertThatThrownBy(() -> sut.prepareSupplier(c._1(), c._2(), null, null))
+                            .assertThatThrownBy(
+                                () -> sut.prepareSupplier(c._1(), c._2(), null, null, Collections.emptyList()))
                             .as("Expecting '%s' with '%s' and '%s' to throw.", c._1(), c._2(), c._3())
                             .isInstanceOf(DestinationAccessException.class)));
 
@@ -239,7 +235,8 @@ class DestinationRetrievalStrategyResolverTest
                     ALWAYS_PROVIDER,
                     DestinationServiceTokenExchangeStrategy.LOOKUP_THEN_EXCHANGE,
                     null,
-                    null);
+                    null,
+                    Collections.emptyList());
 
         TenantAccessor
             .executeWithTenant(
@@ -264,7 +261,7 @@ class DestinationRetrievalStrategyResolverTest
         sut.prepareSupplier(DestinationOptions.builder().build());
         sut.prepareSupplierAllDestinations(DestinationOptions.builder().build());
 
-        verify(sut).prepareSupplier(CURRENT_TENANT, FORWARD_USER_TOKEN, null, null);
+        verify(sut).prepareSupplier(CURRENT_TENANT, FORWARD_USER_TOKEN, null, null, Collections.emptyList());
         verify(sut).prepareSupplierAllDestinations(CURRENT_TENANT);
     }
 
@@ -278,7 +275,12 @@ class DestinationRetrievalStrategyResolverTest
         sut.prepareSupplierAllDestinations(DestinationOptions.builder().build());
 
         verify(sut)
-            .prepareSupplier(CURRENT_TENANT, DestinationServiceTokenExchangeStrategy.LOOKUP_THEN_EXCHANGE, null, null);
+            .prepareSupplier(
+                CURRENT_TENANT,
+                DestinationServiceTokenExchangeStrategy.LOOKUP_THEN_EXCHANGE,
+                null,
+                null,
+                Collections.emptyList());
         verify(sut).prepareSupplierAllDestinations(CURRENT_TENANT);
     }
 
@@ -309,6 +311,6 @@ class DestinationRetrievalStrategyResolverTest
 
         sut.prepareSupplier(opts);
 
-        verify(sut).prepareSupplier(any(), any(), eq(null), eq(fragmentName));
+        verify(sut).prepareSupplier(any(), any(), eq(null), eq(fragmentName), any());
     }
 }
