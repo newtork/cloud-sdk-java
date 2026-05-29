@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.actionsandfunctions;
@@ -130,15 +130,15 @@ public class FunctionResult
         // simple properties
         {
             if (cloudSdkValues.containsKey("RequestId")) {
-                final Object value = cloudSdkValues.remove("RequestId");
-                if ((value == null)||(!value.equals(getRequestId()))) {
-                    setRequestId(((UUID) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("RequestId");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getRequestId()))) {
+                    setRequestId(((UUID) cloudSdkValue));
                 }
             }
             if (cloudSdkValues.containsKey("Message")) {
-                final Object value = cloudSdkValues.remove("Message");
-                if ((value == null)||(!value.equals(getMessage()))) {
-                    setMessage(((java.lang.String) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("Message");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getMessage()))) {
+                    setMessage(((java.lang.String) cloudSdkValue));
                 }
             }
         }

@@ -211,21 +211,73 @@ public final class BtpServiceOptions
         }
 
         /**
-         * Creates an {@link OptionsEnhancer} that instructs an IAS-based destination to use the given application
-         * provider name when performing token retrievals. This is needed in <b>App-To-App</b> communication scenarios.
+         * Creates an {@link OptionsEnhancer} that instructs an IAS-based destination to use the given "Dependency Name"
+         * when performing token retrievals. This is needed in <b>App-To-App</b> communication scenarios.
          * <p>
          * <b>Hint:</b> This option is <b>mutually exclusive</b> with {@link #withConsumerClient(String)}.
          *
          * @param applicationName
-         *            The name of the application provider to be used. This is the name that was used to register the
-         *            to-be-called application within the IAS tenant.
+         *            The name of the "Dependency Name" to be used. This is the name that was used to register the
+         *            dependency to an API of a provider application within the IAS tenant.
          * @return An instance of {@link OptionsEnhancer} that will lead to the given application provider being used
          *         when retrieving an authentication token from the IAS service.
+         *
+         * @see <a href=
+         *      "https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/consume-apis-from-other-applications?locale=en-US">Consuming
+         *      APIs from Other Applications</a>
          */
         @Nonnull
         public static OptionsEnhancer<?> withApplicationName( @Nonnull final String applicationName )
         {
-            return new IasCommunicationOptions(applicationName, null, null);
+            return new IasCommunicationOptions(applicationName, null, null, null, null);
+        }
+
+        /**
+         * Creates an {@link OptionsEnhancer} that instructs an IAS-based destination to use the given provider client
+         * ID when performing token retrievals. This is needed in <b>App-To-App</b> communication scenarios.
+         * <p>
+         * <b>Hint:</b> This option is <b>mutually exclusive</b> with {@link #withConsumerClient(String)}.
+         *
+         * @param providerClientId
+         *            Client ID of the provider application
+         * @return An instance of {@link OptionsEnhancer} that will lead to the given application provider being used
+         *         when retrieving an authentication token from the IAS service.
+         *
+         * @see <a href=
+         *      "https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/consume-apis-from-other-applications?locale=en-US">Consuming
+         *      APIs from Other Applications</a>
+         */
+        @Nonnull
+        public static OptionsEnhancer<?> withProviderClient( @Nonnull final String providerClientId )
+        {
+            return new IasCommunicationOptions(null, providerClientId, null, null, null);
+        }
+
+        /**
+         * Creates an {@link OptionsEnhancer} that instructs an IAS-based destination to use the given provider client
+         * ID and provider tenant ID when performing token retrievals. This is needed in <b>App-To-App</b> communication
+         * scenarios when having dependencies to <i>different tenants</i> of the <i>same, multi-tenant</i> provider
+         * application (fan-out / 1-N).
+         * <p>
+         * <b>Hint:</b> This option is <b>mutually exclusive</b> with {@link #withConsumerClient(String)}
+         *
+         * @param providerClientId
+         *            Client ID of the provider application
+         * @param providerTenantId
+         *            Tenant ID of the provider application
+         * @return An instance of {@link OptionsEnhancer} that will lead to the given application provider being used
+         *         when retrieving an authentication token from the IAS service.
+         *
+         * @see <a href=
+         *      "https://help.sap.com/docs/cloud-identity-services/cloud-identity-services/consume-apis-from-other-applications?locale=en-US">Consuming
+         *      APIs from Other Applications</a>
+         */
+        @Nonnull
+        public static
+            OptionsEnhancer<?>
+            withProviderClient( @Nonnull final String providerClientId, @Nonnull final String providerTenantId )
+        {
+            return new IasCommunicationOptions(null, providerClientId, providerTenantId, null, null);
         }
 
         /**
@@ -243,7 +295,7 @@ public final class BtpServiceOptions
         @Nonnull
         public static OptionsEnhancer<?> withConsumerClient( @Nonnull final String consumerClientId )
         {
-            return new IasCommunicationOptions(null, consumerClientId, null);
+            return new IasCommunicationOptions(null, null, null, consumerClientId, null);
         }
 
         /**
@@ -269,7 +321,24 @@ public final class BtpServiceOptions
             OptionsEnhancer<?>
             withConsumerClient( @Nonnull final String consumerClientId, @Nonnull final String consumerTenantId )
         {
-            return new IasCommunicationOptions(null, consumerClientId, consumerTenantId);
+            return new IasCommunicationOptions(null, null, null, consumerClientId, consumerTenantId);
+        }
+
+        /**
+         * Specifies the token format to request from IAS during token exchange.
+         * <p>
+         * If not specified, the {@code token_format} parameter is not included in the token exchange request, and IAS
+         * will use its default behavior (SAML). Explicitly set to {@code "jwt"} if the target service requires JWT
+         * tokens.
+         *
+         * @param format
+         *            The token format to request. Typically {@code "jwt"} or {@code "saml"}.
+         * @return An instance of {@link OptionsEnhancer} for the token format.
+         */
+        @Nonnull
+        public static OptionsEnhancer<?> withTokenFormat( @Nonnull final String format )
+        {
+            return new TokenFormat(format);
         }
 
         /**
@@ -315,6 +384,10 @@ public final class BtpServiceOptions
             @Nullable
             String applicationName;
             @Nullable
+            String providerClientId;
+            @Nullable
+            String providerTenantId;
+            @Nullable
             String consumerClientId;
             @Nullable
             String consumerTenantId;
@@ -325,6 +398,19 @@ public final class BtpServiceOptions
             {
                 return this;
             }
+        }
+
+        /**
+         * An {@link OptionsEnhancer} that specifies the token format for IAS token requests. If not provided, the
+         * {@code token_format} parameter is not included in the token exchange request. Also refer to
+         * {@link #withTokenFormat(String)}.
+         */
+        @Value
+        @AllArgsConstructor( access = AccessLevel.PRIVATE )
+        public static class TokenFormat implements OptionsEnhancer<String>
+        {
+            @Nonnull
+            String value;
         }
     }
 }

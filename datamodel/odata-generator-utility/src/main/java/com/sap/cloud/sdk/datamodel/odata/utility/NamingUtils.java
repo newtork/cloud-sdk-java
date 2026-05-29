@@ -8,9 +8,8 @@ import java.util.regex.Pattern;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.commons.lang3.StringUtils;
-
 import com.google.common.base.CaseFormat;
+import com.sap.cloud.sdk.cloudplatform.util.StringUtils;
 
 /**
  * Utility class, that bundles various naming related operations. <b>This class is meant for internal usage only.</b>
@@ -80,11 +79,11 @@ public final class NamingUtils
 
         formattedName =
             formattedName
-                .replace("ODataServiceFor", "")
-                .replace("RemoteApiFor", "")
-                .replace("ApiFor", "")
-                .replace("Api", "")
-                .replaceAll("Service$", "");
+                .replaceAll("O(data|DATA|Data)S(ervice|ERVICE)F(or|OR)", "")
+                .replaceAll("R(emote|EMOTE)A(pi|PI)F(or|OR)", "")
+                .replaceAll("A(pi|PI)F(or|OR)", "")
+                .replaceAll("A(pi|PI)", "")
+                .replaceAll("S(ervice|ERVICE)$", "");
 
         return formattedName;
     }

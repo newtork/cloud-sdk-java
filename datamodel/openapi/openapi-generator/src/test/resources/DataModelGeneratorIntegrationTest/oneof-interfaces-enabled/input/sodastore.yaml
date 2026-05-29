@@ -55,6 +55,12 @@ components:
       properties:
         sodaType:
           type: string
+        barCode:
+          oneOf:
+            - type: array
+              items:
+                type: number
+            - type: string
     Fanta:
       type: object
       properties:
@@ -67,3 +73,8 @@ components:
             - type: array
               items:
                 type: string
+            - type: array
+              items:
+                type: array
+                items:
+                  type: string

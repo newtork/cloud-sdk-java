@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 /*
@@ -28,50 +28,12 @@ import com.fasterxml.jackson.annotation.JsonValue;
 public interface FantaFlavor
 {
     /**
-     * Helper class to create a Integer that implements {@link FantaFlavor}.
-     */
-    record InnerInteger(@com.fasterxml.jackson.annotation.JsonValue @Nonnull Integer value) implements FantaFlavor {}
-
-    /**
-     * Creator to enable deserialization of a Integer.
-     *
-     * @param val
-     *            the value to use
-     * @return a new instance of {@link InnerInteger}.
-     */
-    @com.fasterxml.jackson.annotation.JsonCreator
-    @Nonnull
-    static InnerInteger create( @Nonnull final Integer val )
-    {
-        return new InnerInteger(val);
-    }
-
-    /**
-     * Helper class to create a FlavorType that implements {@link FantaFlavor}.
-     */
-    record InnerFlavorType(@com.fasterxml.jackson.annotation.JsonValue @Nonnull FlavorType value) implements FantaFlavor {}
-
-    /**
-     * Creator to enable deserialization of a FlavorType.
-     *
-     * @param val
-     *            the value to use
-     * @return a new instance of {@link InnerFlavorType}.
-     */
-    @com.fasterxml.jackson.annotation.JsonCreator
-    @Nonnull
-    static InnerFlavorType create( @Nonnull final FlavorType val )
-    {
-        return new InnerFlavorType(val);
-    }
-
-    /**
-     * Helper class to create a String that implements {@link FantaFlavor}.
+     * Helper class to create {@code String } that implements {@link FantaFlavor}.
      */
     record InnerString(@com.fasterxml.jackson.annotation.JsonValue @Nonnull String value) implements FantaFlavor {}
 
     /**
-     * Creator to enable deserialization of a String.
+     * Creator to enable deserialization of {@code String }.
      *
      * @param val
      *            the value to use
@@ -85,22 +47,60 @@ public interface FantaFlavor
     }
 
     /**
-    * Helper class to create a list of FlavorType that implements {@link FantaFlavor}.
-    */
-    record InnerFlavorTypes(@com.fasterxml.jackson.annotation.JsonValue @Nonnull List<FlavorType> values) implements FantaFlavor {}
+     * Helper class to create {@code Integer } that implements {@link FantaFlavor}.
+     */
+    record InnerInteger(@com.fasterxml.jackson.annotation.JsonValue @Nonnull Integer value) implements FantaFlavor {}
 
     /**
-     * Creator to enable deserialization of a list of FlavorType.
+     * Creator to enable deserialization of {@code Integer }.
      *
      * @param val
      *            the value to use
-     * @return a new instance of {@link InnerFlavorTypes}.
+     * @return a new instance of {@link InnerInteger}.
      */
     @com.fasterxml.jackson.annotation.JsonCreator
     @Nonnull
-    static InnerFlavorTypes create( @Nonnull final List<FlavorType> val )
+    static InnerInteger create( @Nonnull final Integer val )
     {
-        return new InnerFlavorTypes(val);
+        return new InnerInteger(val);
+    }
+
+    /**
+     * Helper class to create {@code FlavorType } that implements {@link FantaFlavor}.
+     */
+    record InnerFlavorType(@com.fasterxml.jackson.annotation.JsonValue @Nonnull FlavorType value) implements FantaFlavor {}
+
+    /**
+     * Creator to enable deserialization of {@code FlavorType }.
+     *
+     * @param val
+     *            the value to use
+     * @return a new instance of {@link InnerFlavorType}.
+     */
+    @com.fasterxml.jackson.annotation.JsonCreator
+    @Nonnull
+    static InnerFlavorType createInnerFlavorType( @Nonnull final FlavorType val )
+    {
+        return new InnerFlavorType(val);
+    }
+
+    /**
+     * Helper class to create {@code List<FlavorType> } that implements {@link FantaFlavor}.
+     */
+    record ListOfFlavorTypes(@com.fasterxml.jackson.annotation.JsonValue @Nonnull List<FlavorType> values) implements FantaFlavor {}
+
+    /**
+     * Creator to enable deserialization of {@code List<FlavorType> }.
+     *
+     * @param val
+     *            the value to use
+     * @return a new instance of {@link ListOfFlavorTypes}.
+     */
+    @com.fasterxml.jackson.annotation.JsonCreator
+    @Nonnull
+    static ListOfFlavorTypes createListOfFlavorTypes( @Nonnull final List<FlavorType> val )
+    {
+        return new ListOfFlavorTypes(val);
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 /*
@@ -28,6 +28,7 @@ import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonValue;
 import java.util.List;
 import test.Cola;
+import test.ColaBarCode;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonAnyGetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
@@ -42,27 +43,27 @@ import javax.annotation.Nullable;
 @Beta
 public interface FantaFlavor  {
     /**
-     * Helper class to create a Cola that implements {@link FantaFlavor}.
+     * Helper class to create {@code List<String> } that implements {@link FantaFlavor}.
      */
-    record InnerCola(@com.fasterxml.jackson.annotation.JsonValue @Nonnull Cola value) implements FantaFlavor {}
+    record ListOfStrings(@com.fasterxml.jackson.annotation.JsonValue @Nonnull List<String> values) implements FantaFlavor {}
 
     /**
-     * Creator to enable deserialization of a Cola.
+     * Creator to enable deserialization of {@code List<String> }.
      *
      * @param val the value to use
-     * @return a new instance of {@link InnerCola}.
+     * @return a new instance of {@link ListOfStrings}.
      */
     @com.fasterxml.jackson.annotation.JsonCreator
     @Nonnull
-    static InnerCola create( @Nonnull final Cola val) { return new InnerCola(val); }
+    static ListOfStrings createListOfStrings( @Nonnull final List<String> val) { return new ListOfStrings(val); }
 
     /**
-     * Helper class to create a String that implements {@link FantaFlavor}.
+     * Helper class to create {@code String } that implements {@link FantaFlavor}.
      */
     record InnerString(@com.fasterxml.jackson.annotation.JsonValue @Nonnull String value) implements FantaFlavor {}
 
     /**
-     * Creator to enable deserialization of a String.
+     * Creator to enable deserialization of {@code String }.
      *
      * @param val the value to use
      * @return a new instance of {@link InnerString}.
@@ -72,19 +73,34 @@ public interface FantaFlavor  {
     static InnerString create( @Nonnull final String val) { return new InnerString(val); }
 
     /**
-    * Helper class to create a list of String that implements {@link FantaFlavor}.
-    */
-    record InnerStrings(@com.fasterxml.jackson.annotation.JsonValue @Nonnull List<String> values) implements FantaFlavor {}
+     * Helper class to create {@code List<List<String>> } that implements {@link FantaFlavor}.
+     */
+    record ListOfListOfStrings(@com.fasterxml.jackson.annotation.JsonValue @Nonnull List<List<String>> values) implements FantaFlavor {}
 
     /**
-    * Creator to enable deserialization of a list of String.
-    *
-    * @param val the value to use
-    * @return a new instance of {@link InnerStrings}.
-    */
+     * Creator to enable deserialization of {@code List<List<String>> }.
+     *
+     * @param val the value to use
+     * @return a new instance of {@link ListOfListOfStrings}.
+     */
     @com.fasterxml.jackson.annotation.JsonCreator
     @Nonnull
-    static InnerStrings create( @Nonnull final List<String> val) { return new InnerStrings(val); }
+    static ListOfListOfStrings createListOfListOfStrings( @Nonnull final List<List<String>> val) { return new ListOfListOfStrings(val); }
+
+    /**
+     * Helper class to create {@code Cola } that implements {@link FantaFlavor}.
+     */
+    record InnerCola(@com.fasterxml.jackson.annotation.JsonValue @Nonnull Cola value) implements FantaFlavor {}
+
+    /**
+     * Creator to enable deserialization of {@code Cola }.
+     *
+     * @param val the value to use
+     * @return a new instance of {@link InnerCola}.
+     */
+    @com.fasterxml.jackson.annotation.JsonCreator
+    @Nonnull
+    static InnerCola createInnerCola( @Nonnull final Cola val) { return new InnerCola(val); }
 
 }
 

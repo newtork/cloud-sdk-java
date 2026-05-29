@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.actionsandfunctions;
@@ -84,15 +84,15 @@ public class Address
         // simple properties
         {
             if (cloudSdkValues.containsKey("Street")) {
-                final Object value = cloudSdkValues.remove("Street");
-                if ((value == null)||(!value.equals(getStreet()))) {
-                    setStreet(((java.lang.String) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("Street");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getStreet()))) {
+                    setStreet(((java.lang.String) cloudSdkValue));
                 }
             }
             if (cloudSdkValues.containsKey("City")) {
-                final Object value = cloudSdkValues.remove("City");
-                if ((value == null)||(!value.equals(getCity()))) {
-                    setCity(((java.lang.String) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("City");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getCity()))) {
+                    setCity(((java.lang.String) cloudSdkValue));
                 }
             }
         }

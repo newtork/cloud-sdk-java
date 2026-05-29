@@ -16,8 +16,10 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.net.URI;
@@ -28,6 +30,7 @@ import java.security.cert.CertificateException;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -41,10 +44,12 @@ import com.github.tomakehurst.wiremock.stubbing.ServeEvent;
 import com.sap.cloud.sdk.cloudplatform.cache.CacheManager;
 import com.sap.cloud.sdk.cloudplatform.connectivity.OAuth2Service.TenantPropagationStrategy;
 import com.sap.cloud.sdk.cloudplatform.connectivity.SecurityLibWorkarounds.ZtisClientIdentity;
+import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationOAuthTokenException;
 import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceConfiguration;
 import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceIsolationMode;
 import com.sap.cloud.sdk.cloudplatform.security.AuthToken;
+import com.sap.cloud.sdk.cloudplatform.security.principal.DefaultPrincipal;
 import com.sap.cloud.sdk.cloudplatform.tenant.DefaultTenant;
 import com.sap.cloud.sdk.cloudplatform.tenant.TenantAccessor;
 import com.sap.cloud.sdk.testutil.TestContext;
@@ -83,11 +88,14 @@ class OAuth2ServiceTest
     @RegisterExtension
     static TestContext context = TestContext.withThreadContext().resetCaches();
 
+    private final IasTenantHostResolver mockResolver = mock(IasTenantHostResolver.class);
+
     @BeforeEach
     void setUp()
     {
         SERVER_1.stubFor(post("/oauth/token").willReturn(okJson(RESPONSE_TEMPLATE.formatted(TOKEN_1))));
         SERVER_2.stubFor(post("/oauth/token").willReturn(okJson(RESPONSE_TEMPLATE.formatted(TOKEN_2))));
+        doReturn("localhost").when(mockResolver).resolve(any(), any());
     }
 
     @Test
@@ -165,7 +173,9 @@ class OAuth2ServiceTest
                 .withTokenUri(SERVER_1.baseUrl())
                 .withIdentity(IDENTITY_1)
                 .withAdditionalParameter("app_tid", "provider")
-                .withTenantPropagationStrategy(TenantPropagationStrategy.TENANT_SUBDOMAIN);
+                .withBtpTenantApiUri(URI.create("http://should.not.exist"))
+                .withTenantPropagationStrategy(TenantPropagationStrategy.TENANT_SUBDOMAIN)
+                .withIasTenantHostResolver(mockResolver);
         {
             // behalf: current tenant
             OAuth2Service service = serviceBuilder.build();
@@ -175,10 +185,8 @@ class OAuth2ServiceTest
             TenantAccessor.executeWithTenant(new DefaultTenant("t1", "localhost"), service::retrieveAccessToken);
             TenantAccessor.executeWithTenant(new DefaultTenant("t2", "localhost"), service::retrieveAccessToken);
 
-            // if a tenant is explicitly defined, the subdomain is mandatory for the subdomain strategy
-            assertThatThrownBy(
-                () -> TenantAccessor.executeWithTenant(new DefaultTenant("t3"), service::retrieveAccessToken))
-                .hasMessageContaining("does not have a subdomain");
+            // if a tenant without subdomain is given, the subdomain will be dynamically resolved using the BTP API
+            TenantAccessor.executeWithTenant(new DefaultTenant("t3"), service::retrieveAccessToken);
 
             SERVER_1
                 .verify(
@@ -186,6 +194,7 @@ class OAuth2ServiceTest
                     postRequestedFor(urlEqualTo("/oauth/token")).withRequestBody(containing("app_tid=provider")));
             SERVER_1.verify(1, postRequestedFor(urlEqualTo("/oauth/token")).withRequestBody(containing("app_tid=t1")));
             SERVER_1.verify(1, postRequestedFor(urlEqualTo("/oauth/token")).withRequestBody(containing("app_tid=t2")));
+            SERVER_1.verify(1, postRequestedFor(urlEqualTo("/oauth/token")).withRequestBody(containing("app_tid=t3")));
         }
         {
             // behalf provider
@@ -209,26 +218,44 @@ class OAuth2ServiceTest
 
             assertThatThrownBy(service::retrieveAccessToken);
 
-            context.setTenant(new DefaultTenant("tenant", "localhost"));
-            context.setPrincipal();
-            final String token =
+            final var tenant = new DefaultTenant("tenant", "ma");
+            var principal = new DefaultPrincipal("user1");
+            context.setTenant(tenant);
+            context.setPrincipal(principal);
+            var token =
                 JwtGenerator
                     .getInstance(Service.IAS, "clientid")
-                    .withClaimValue("app_tid", "tenant")
+                    .withClaimValue("app_tid", tenant.getTenantId())
+                    .withClaimValue("user_uuid", principal.getPrincipalId())
                     .createToken()
                     .getTokenValue();
             context.setAuthToken(new AuthToken(JWT.decode(token)));
 
             service.retrieveAccessToken();
+            service.retrieveAccessToken();
+
+            principal = new DefaultPrincipal("user2");
+            token =
+                JwtGenerator
+                    .getInstance(Service.IAS, "clientid")
+                    .withClaimValue("app_tid", tenant.getTenantId())
+                    .withClaimValue("user_uuid", principal.getPrincipalId())
+                    .createToken()
+                    .getTokenValue();
+            context.setAuthToken(new AuthToken(JWT.decode(token)));
+
+            service.retrieveAccessToken();
+            service.retrieveAccessToken();
 
             SERVER_1
                 .verify(
-                    1,
+                    2,
                     postRequestedFor(urlEqualTo("/oauth/token"))
-                        .withRequestBody(containing("app_tid=tenant"))
+                        .withRequestBody(containing("app_tid=" + tenant.getTenantId()))
+                        .withRequestBody(containing("refresh_expiry=0"))
                         .withRequestBody(
                             containing("grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer".replace(":", "%3A")))
-                        .withRequestBody(containing("assertion=" + token)));
+                        .withRequestBody(containing("assertion=")));
         }
     }
 
@@ -382,15 +409,87 @@ class OAuth2ServiceTest
     {
         final KeyStore ks = KeyStore.getInstance("JKS");
         ks.load(null, null);
-        ClientIdentity identity = new ZtisClientIdentity("id", ks);
+        ClientIdentity identity = new ZtisClientIdentity("id", () -> ks);
         OAuth2Service service = OAuth2Service.builder().withTokenUri(SERVER_1.baseUrl()).withIdentity(identity).build();
 
         final OAuth2TokenService result = service.getTokenService(null);
         assertThat(result).isSameAs(service.getTokenService(null));
 
-        identity = new ZtisClientIdentity("other-id", ks);
+        identity = new ZtisClientIdentity("other-id", () -> ks);
         service = OAuth2Service.builder().withTokenUri(SERVER_1.baseUrl()).withIdentity(identity).build();
 
         assertThat(result).isNotSameAs(service.getTokenService(null));
+    }
+
+    @Test
+    @SneakyThrows
+    void testZeroTrustCertificateRotationCausesCacheMiss()
+    {
+        // we need to use actual KeyStores here because the code will build an HTTP Client and mocks don't suffice
+        final KeyStore ks1 = KeyStore.getInstance("JKS");
+        final KeyStore ks2 = KeyStore.getInstance("JKS");
+        ks1.load(null, null);
+        ks2.load(null, null);
+
+        assertThat(ks1).describedAs("Sanity check: objects should be different").isNotSameAs(ks2).isNotEqualTo(ks2);
+
+        @SuppressWarnings( "unchecked" )
+        final Supplier<KeyStore> mockZtis = mock(Supplier.class);
+        when(mockZtis.get()).thenReturn(ks1);
+
+        final ZtisClientIdentity identity = new ZtisClientIdentity("id", mockZtis);
+
+        final OAuth2Service service =
+            OAuth2Service.builder().withTokenUri(SERVER_1.baseUrl()).withIdentity(identity).build();
+
+        // Before rotation: same KeyStore → cache hit
+        final OAuth2TokenService tokenService1 = service.getTokenService(null);
+        assertThat(tokenService1).isSameAs(service.getTokenService(null));
+
+        when(mockZtis.get()).thenReturn(ks2);
+
+        // After rotation: different KeyStore → cache miss → new token service with new certificate
+        final OAuth2TokenService tokenService2 = service.getTokenService(null);
+        assertThat(tokenService2).isNotSameAs(tokenService1);
+    }
+
+    @Test
+    void testSubdomainStrategyThrowsWhenBtpApiUriMissing()
+    {
+        final OAuth2Service service =
+            OAuth2Service
+                .builder()
+                .withTokenUri(SERVER_1.baseUrl())
+                .withIdentity(IDENTITY_1)
+                .withTenantPropagationStrategy(TenantPropagationStrategy.TENANT_SUBDOMAIN)
+                // no withBtpTenantApiUri
+                .build();
+
+        assertThatThrownBy(
+            () -> TenantAccessor.executeWithTenant(new DefaultTenant("t1"), service::retrieveAccessToken))
+            .hasMessageContaining("BTP API URL is not given")
+            .hasMessageContaining("property 'btp-tenant-api'")
+            .hasRootCauseInstanceOf(DestinationAccessException.class);
+    }
+
+    @Test
+    void testSubdomainStrategyPropagatesResolverException()
+    {
+        final DestinationAccessException resolverError = new DestinationAccessException("resolver failed");
+        doThrow(resolverError).when(mockResolver).resolve(any(), any());
+
+        final OAuth2Service service =
+            OAuth2Service
+                .builder()
+                .withTokenUri(SERVER_1.baseUrl())
+                .withIdentity(IDENTITY_1)
+                .withBtpTenantApiUri(URI.create("http://should.not.exist"))
+                .withTenantPropagationStrategy(TenantPropagationStrategy.TENANT_SUBDOMAIN)
+                .withIasTenantHostResolver(mockResolver)
+                .build();
+
+        assertThatThrownBy(
+            () -> TenantAccessor.executeWithTenant(new DefaultTenant("t1"), service::retrieveAccessToken))
+            .hasRootCause(resolverError);
     }
 }

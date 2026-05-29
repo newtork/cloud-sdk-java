@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.sdkgrocerystore;
@@ -84,15 +84,15 @@ public class ProductCount
         // simple properties
         {
             if (cloudSdkValues.containsKey("ProductId")) {
-                final Object value = cloudSdkValues.remove("ProductId");
-                if ((value == null)||(!value.equals(getProductId()))) {
-                    setProductId(((Integer) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("ProductId");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getProductId()))) {
+                    setProductId(((Integer) cloudSdkValue));
                 }
             }
             if (cloudSdkValues.containsKey("Quantity")) {
-                final Object value = cloudSdkValues.remove("Quantity");
-                if ((value == null)||(!value.equals(getQuantity()))) {
-                    setQuantity(((Integer) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("Quantity");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getQuantity()))) {
+                    setQuantity(((Integer) cloudSdkValue));
                 }
             }
         }

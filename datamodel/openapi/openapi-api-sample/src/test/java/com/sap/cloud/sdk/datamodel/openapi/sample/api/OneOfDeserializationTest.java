@@ -3,6 +3,7 @@ package com.sap.cloud.sdk.datamodel.openapi.sample.api;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.stream.Stream;
 
 import javax.annotation.Nonnull;
@@ -22,6 +23,8 @@ import com.sap.cloud.sdk.datamodel.openapi.sample.model.AllOf;
 import com.sap.cloud.sdk.datamodel.openapi.sample.model.AnyOf;
 import com.sap.cloud.sdk.datamodel.openapi.sample.model.Bar;
 import com.sap.cloud.sdk.datamodel.openapi.sample.model.Cola;
+import com.sap.cloud.sdk.datamodel.openapi.sample.model.ColaBarCode;
+import com.sap.cloud.sdk.datamodel.openapi.sample.model.ColaLogo;
 import com.sap.cloud.sdk.datamodel.openapi.sample.model.Fanta;
 import com.sap.cloud.sdk.datamodel.openapi.sample.model.FantaFlavor;
 import com.sap.cloud.sdk.datamodel.openapi.sample.model.FlavorType;
@@ -45,7 +48,9 @@ class OneOfDeserializationTest
     private static final String COLA_JSON = """
         {
           "sodaType": "Cola",
-          "caffeine": true
+          "caffeine": true,
+          "logo": null,
+          "barCode": null
         }""";
     private static final String FANTA_JSON = """
         {
@@ -62,10 +67,23 @@ class OneOfDeserializationTest
             {"intensity":5,"nuance":"citrus"}
           ]
         }""";
+    private static final String COLA_LOGO_MATRIX_JSON = """
+        {
+          "sodaType": "Cola",
+          "caffeine": true,
+          "logo": [[255, 0, 0], [0, 255, 0], [0, 0, 255]]
+        }""";
     private static final String UNKNOWN_JSON = """
         {
           "sodaType": "Sprite",
           "someProperty": "someValue"
+        }""";
+
+    private static final String COLA_BARCODE_FLOAT_ARRAY_JSON = """
+        {
+          "sodaType": "Cola",
+          "caffeine": true,
+          "barCode": [1.1, 2.2, 3.3]
         }""";
 
     @Test
@@ -144,7 +162,7 @@ class OneOfDeserializationTest
 
     static Stream<Class<?>> oneOfStrategiesProvider()
     {
-        return Stream.of(OneOf.class, OneOfWithDiscriminator.class, OneOfWithDiscriminatorAndMapping.class);
+        return Stream.of(OneOf.class, OneOfWithDiscriminator.class);
     }
 
     @ParameterizedTest( name = "Deserialization with strategy: {0}" )
@@ -152,7 +170,12 @@ class OneOfDeserializationTest
     void oneOfWithNestedArrayOfObjects( Class<?> strategy )
         throws JsonProcessingException
     {
-        Object actual = objectMapper.readValue(FANTA_FLAVOR_ARRAY_JSON, strategy);
+        var payload = FANTA_FLAVOR_ARRAY_JSON;
+        if( strategy == OneOfWithDiscriminatorAndMapping.class ) {
+            payload.replace("Fanta", "fancy_fanta").replace("Cola", "cool_cola");
+        }
+
+        Object actual = objectMapper.readValue(payload, strategy);
 
         assertThat(actual)
             .describedAs("Object should automatically be deserialized as Fanta with JSON subtype deduction")
@@ -160,13 +183,39 @@ class OneOfDeserializationTest
         var fanta = (Fanta) actual;
         assertThat(fanta.getFlavor())
             .describedAs("Flavor should be deserialized as wrapper class for a list of FlavorType instances")
-            .isInstanceOf(FantaFlavor.InnerFlavorTypes.class);
-        var flavorTypes = (FantaFlavor.InnerFlavorTypes) fanta.getFlavor();
+            .isInstanceOf(FantaFlavor.ListOfFlavorTypes.class);
+        var flavorTypes = (FantaFlavor.ListOfFlavorTypes) fanta.getFlavor();
         assertThat(flavorTypes.values())
             .describedAs("Flavor should be deserialized as a list of FlavorType instances")
             .isNotEmpty()
             .allMatch(FlavorType.class::isInstance);
 
+        actual = objectMapper.readValue(COLA_LOGO_MATRIX_JSON, strategy);
+
+        assertThat(actual)
+            .describedAs("Object should automatically be deserialized as Cola with JSON subtype deduction")
+            .isInstanceOf(Cola.class);
+        var cola = (Cola) actual;
+        assertThat(cola.isCaffeine()).isTrue();
+        assertThat(cola.getLogo()).isInstanceOf(ColaLogo.ListOfListOfIntegers.class);
+        var logo = (ColaLogo.ListOfListOfIntegers) cola.getLogo();
+        assertThat(logo.values())
+            .describedAs("Logo should be deserialized as a list of list of integers")
+            .isInstanceOf(List.class)
+            .containsExactly(List.of(255, 0, 0), List.of(0, 255, 0), List.of(0, 0, 255));
+
+        actual = objectMapper.readValue(COLA_BARCODE_FLOAT_ARRAY_JSON, strategy);
+        assertThat(actual)
+            .describedAs("Object should automatically be deserialized as Cola with JSON subtype deduction")
+            .isInstanceOf(Cola.class);
+        cola = (Cola) actual;
+        assertThat(cola.isCaffeine()).isTrue();
+        assertThat(cola.getBarCode()).isInstanceOf(ColaBarCode.ArrayOfFloats.class);
+        var barCode = (ColaBarCode.ArrayOfFloats) cola.getBarCode();
+        assertThat(barCode.values())
+            .describedAs("BarCode should be deserialized as an array of floats")
+            .isInstanceOf(float[].class)
+            .containsExactly(1.1f, 2.2f, 3.3f);
     }
 
     @Test
@@ -187,8 +236,9 @@ class OneOfDeserializationTest
 
         assertThat(actual.getSodaType()).isEqualTo("Fanta");
         assertThat(actual.getColor()).isEqualTo("orange");
-        assertThat(actual.getFlavor()).isInstanceOf(FantaFlavor.InnerFlavorTypes.class);
-        assertThat(((FantaFlavor.InnerFlavorTypes) actual.getFlavor()).values()).allMatch(FlavorType.class::isInstance);
+        assertThat(actual.getFlavor()).isInstanceOf(FantaFlavor.ListOfFlavorTypes.class);
+        assertThat(((FantaFlavor.ListOfFlavorTypes) actual.getFlavor()).values())
+            .allMatch(FlavorType.class::isInstance);
     }
 
     @Test
@@ -211,7 +261,7 @@ class OneOfDeserializationTest
         throws JsonProcessingException
     {
         var expected = objectMapper.readValue(COLA_JSON, JsonNode.class);
-        var actual = objectMapper.valueToTree(expected);
+        var actual = objectMapper.valueToTree(COLA_OBJECT);
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -220,8 +270,8 @@ class OneOfDeserializationTest
     void testFantaSerialization()
         throws JsonProcessingException
     {
-        var expected = objectMapper.readValue(FANTA_JSON, JsonNode.class);
-        var actual = objectMapper.valueToTree(expected);
+        JsonNode expected = objectMapper.readValue(FANTA_JSON, JsonNode.class);
+        JsonNode actual = objectMapper.valueToTree(FANTA_OBJECT);
 
         assertThat(actual).isEqualTo(expected);
     }

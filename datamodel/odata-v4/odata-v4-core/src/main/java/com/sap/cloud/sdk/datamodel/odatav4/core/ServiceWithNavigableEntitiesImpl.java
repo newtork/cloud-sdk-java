@@ -2,6 +2,8 @@ package com.sap.cloud.sdk.datamodel.odatav4.core;
 
 import javax.annotation.Nonnull;
 
+import org.apache.http.HttpHeaders;
+
 import com.sap.cloud.sdk.datamodel.odata.client.expression.ODataResourcePath;
 
 import io.vavr.control.Option;
@@ -63,8 +65,10 @@ class ServiceWithNavigableEntitiesImpl
         public <NavigationT extends VdmEntity<NavigationT>> NavigableEntityCollection<NavigationT> navigateTo(
             @Nonnull final NavigationProperty.Collection<EntityT, NavigationT> property )
         {
-            entityPath.addSegment(property.getFieldName());
-            return new EntityCollection<>(servicePath, entityPath, property.getItemType());
+            return new EntityCollection<>(
+                servicePath,
+                entityPath.copy().addSegment(property.getFieldName()),
+                property.getItemType());
         }
 
         @Nonnull
@@ -72,8 +76,11 @@ class ServiceWithNavigableEntitiesImpl
         public <NavigationT extends VdmEntity<NavigationT>> NavigableEntitySingle<NavigationT> navigateTo(
             @Nonnull final NavigationProperty.Single<EntityT, NavigationT> property )
         {
-            entityPath.addSegment(property.getFieldName());
-            return new EntitySingle<>(servicePath, entityPath, Option.none(), property.getItemType());
+            return new EntitySingle<>(
+                servicePath,
+                entityPath.copy().addSegment(property.getFieldName()),
+                Option.none(),
+                property.getItemType());
         }
 
         @Nonnull
@@ -97,8 +104,11 @@ class ServiceWithNavigableEntitiesImpl
         public <ResultT extends VdmEntity<ResultT>> NavigableEntitySingle<ResultT> withFunction(
             @Nonnull final BoundFunction.SingleToSingleEntity.Composable<EntityT, ResultT> function )
         {
-            entityPath.addSegment(function.getQualifiedName(), function.getParameters());
-            return new EntitySingle<>(servicePath, entityPath, Option.none(), function.getReturnType());
+            return new EntitySingle<>(
+                servicePath,
+                entityPath.copy().addSegment(function.getQualifiedName(), function.getParameters()),
+                Option.none(),
+                function.getReturnType());
         }
 
         @Override
@@ -106,8 +116,10 @@ class ServiceWithNavigableEntitiesImpl
         public <ResultT extends VdmEntity<ResultT>> NavigableEntityCollection<ResultT> withFunction(
             @Nonnull final BoundFunction.SingleToCollectionEntity.Composable<EntityT, ResultT> function )
         {
-            entityPath.addSegment(function.getQualifiedName(), function.getParameters());
-            return new EntityCollection<>(servicePath, entityPath, function.getReturnType());
+            return new EntityCollection<>(
+                servicePath,
+                entityPath.copy().addSegment(function.getQualifiedName(), function.getParameters()),
+                function.getReturnType());
         }
 
         @Override
@@ -115,19 +127,19 @@ class ServiceWithNavigableEntitiesImpl
         public <ResultT> SingleValueActionRequestBuilder<ResultT> applyAction(
             @Nonnull final BoundAction.SingleToSingle<EntityT, ResultT> action )
         {
-            entityPath.addSegment(action.getQualifiedName());
+            final ODataResourcePath actionPath = entityPath.copy().addSegment(action.getQualifiedName());
             final SingleValueActionRequestBuilder<ResultT> requestBuilder =
                 new SingleValueActionRequestBuilder<>(
                     servicePath,
-                    entityPath,
+                    actionPath,
                     action.getParameters(),
                     action.getReturnType());
             maybeEntity
                 .filter(e -> e.getVersionIdentifier().isDefined())
-                .map(VdmEntity<EntityT>::getVersionIdentifier)
+                .map(VdmEntity::getVersionIdentifier)
                 .filter(Option::isDefined)
                 .map(Option::get)
-                .forEach(eTag -> requestBuilder.withHeader("ETag", eTag));
+                .forEach(eTag -> requestBuilder.withHeader(HttpHeaders.IF_MATCH, eTag));
             return requestBuilder;
         }
 
@@ -136,19 +148,19 @@ class ServiceWithNavigableEntitiesImpl
         public <ResultT> CollectionValueActionRequestBuilder<ResultT> applyAction(
             @Nonnull final BoundAction.SingleToCollection<EntityT, ResultT> action )
         {
-            entityPath.addSegment(action.getQualifiedName());
+            final ODataResourcePath actionPath = entityPath.copy().addSegment(action.getQualifiedName());
             final CollectionValueActionRequestBuilder<ResultT> requestBuilder =
                 new CollectionValueActionRequestBuilder<>(
                     servicePath,
-                    entityPath,
+                    actionPath,
                     action.getParameters(),
                     action.getReturnType());
             maybeEntity
                 .filter(e -> e.getVersionIdentifier().isDefined())
-                .map(VdmEntity<EntityT>::getVersionIdentifier)
+                .map(VdmEntity::getVersionIdentifier)
                 .filter(Option::isDefined)
                 .map(Option::get)
-                .forEach(eTag -> requestBuilder.withHeader("ETag", eTag));
+                .forEach(eTag -> requestBuilder.withHeader(HttpHeaders.IF_MATCH, eTag));
             return requestBuilder;
         }
     }
@@ -168,8 +180,11 @@ class ServiceWithNavigableEntitiesImpl
         public <EntityT extends VdmEntity<EntityT>> NavigableEntitySingle<EntityT> forEntity(
             @Nonnull final EntityT entity )
         {
-            entityPath.addParameterToLastSegment(entity.getKey());
-            return new EntitySingle<>(servicePath, entityPath, Option.of(entity), entity.getType());
+            return new EntitySingle<>(
+                servicePath,
+                entityPath.addParameterToLastSegment(entity.getKey()),
+                Option.of(entity),
+                entity.getType());
         }
 
         @Override
@@ -200,10 +215,9 @@ class ServiceWithNavigableEntitiesImpl
             NavigableEntitySingle<ResultT>
             withFunction( @Nonnull final BoundFunction.CollectionToSingleEntity.Composable<EntityT, ResultT> function )
         {
-            entityPath.addSegment(function.getQualifiedName(), function.getParameters());
             return new ServiceWithNavigableEntitiesImpl.EntitySingle<>(
                 servicePath,
-                entityPath,
+                entityPath.copy().addSegment(function.getQualifiedName(), function.getParameters()),
                 Option.none(),
                 function.getReturnType());
         }
@@ -216,10 +230,9 @@ class ServiceWithNavigableEntitiesImpl
             withFunction(
                 @Nonnull final BoundFunction.CollectionToCollectionEntity.Composable<EntityT, ResultT> function )
         {
-            entityPath.addSegment(function.getQualifiedName(), function.getParameters());
             return new ServiceWithNavigableEntitiesImpl.EntityCollection<>(
                 servicePath,
-                entityPath,
+                entityPath.copy().addSegment(function.getQualifiedName(), function.getParameters()),
                 function.getReturnType());
         }
 
@@ -230,7 +243,7 @@ class ServiceWithNavigableEntitiesImpl
         {
             return new CollectionValueActionRequestBuilder<>(
                 servicePath,
-                entityPath.addSegment(action.getQualifiedName()),
+                entityPath.copy().addSegment(action.getQualifiedName()),
                 action.getParameters(),
                 action.getReturnType());
         }
@@ -242,7 +255,7 @@ class ServiceWithNavigableEntitiesImpl
         {
             return new SingleValueActionRequestBuilder<>(
                 servicePath,
-                entityPath.addSegment(action.getQualifiedName()),
+                entityPath.copy().addSegment(action.getQualifiedName()),
                 action.getParameters(),
                 action.getReturnType());
         }
@@ -275,7 +288,7 @@ class ServiceWithNavigableEntitiesImpl
     {
         return new SingleValueFunctionRequestBuilder<>(
             servicePath,
-            entityPath.addSegment(function.getQualifiedName(), function.getParameters()),
+            entityPath.copy().addSegment(function.getQualifiedName(), function.getParameters()),
             function.getReturnType());
     }
 
@@ -289,7 +302,7 @@ class ServiceWithNavigableEntitiesImpl
     {
         return new CollectionValueFunctionRequestBuilder<>(
             servicePath,
-            entityPath.addSegment(function.getQualifiedName(), function.getParameters()),
+            entityPath.copy().addSegment(function.getQualifiedName(), function.getParameters()),
             function.getReturnType());
     }
 }

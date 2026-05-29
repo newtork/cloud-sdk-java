@@ -5,6 +5,7 @@ import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationRetrievalS
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceOptionsAugmenter.DESTINATION_RETRIEVAL_STRATEGY_KEY;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceOptionsAugmenter.DESTINATION_TOKEN_EXCHANGE_STRATEGY_KEY;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceOptionsAugmenter.augmenter;
+import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceOptionsAugmenter.CrossLevelScope.PROVIDER_SUBACCOUNT;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceRetrievalStrategy.ALWAYS_PROVIDER;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceRetrievalStrategy.CURRENT_TENANT;
 import static com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceRetrievalStrategy.ONLY_SUBSCRIBER;
@@ -27,9 +28,7 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
-import static org.mockito.Mockito.when;
 
-import java.io.IOException;
 import java.net.URI;
 import java.time.Duration;
 import java.time.Instant;
@@ -49,10 +48,14 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
-import org.apache.http.HttpVersion;
-import org.apache.http.client.HttpClient;
-import org.apache.http.message.BasicHttpResponse;
+import org.apache.hc.client5.http.classic.HttpClient;
+import org.apache.hc.core5.http.ClassicHttpRequest;
+import org.apache.hc.core5.http.HttpStatus;
+import org.apache.hc.core5.http.io.HttpClientResponseHandler;
+import org.apache.hc.core5.http.message.BasicClassicHttpResponse;
+import org.assertj.core.api.Condition;
 import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,12 +64,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.stubbing.Answer;
 
 import com.auth0.jwt.JWT;
 import com.google.gson.stream.MalformedJsonException;
 import com.sap.cloud.environment.servicebinding.api.ServiceBinding;
 import com.sap.cloud.sdk.cloudplatform.cache.CacheKey;
+import com.sap.cloud.sdk.cloudplatform.connectivity.DestinationServiceAdapter.DestinationHttpClientResponseHandler;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationAccessException;
 import com.sap.cloud.sdk.cloudplatform.connectivity.exception.DestinationNotFoundException;
 import com.sap.cloud.sdk.cloudplatform.resilience.ResilienceConfiguration;
@@ -80,13 +87,15 @@ import com.sap.cloud.sdk.cloudplatform.tenant.TenantAccessor;
 import com.sap.cloud.sdk.cloudplatform.thread.ThreadContextExecutors;
 import com.sap.cloud.sdk.testutil.TestContext;
 
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.vavr.control.Try;
 import lombok.SneakyThrows;
+import lombok.val;
 
 @Isolated( "Test interacts with global destination cache" )
 class DestinationServiceTest
 {
-    private static final int TEST_TIMEOUT = 30_000; // 5 minutes
+    private static final int TEST_TIMEOUT = 30_000; // 30 seconds
     // region (TEST_DATA)
     private static final String destinationName = "SomeDestinationName";
     private static final String providerUrl = "https://service.provider.com";
@@ -105,6 +114,15 @@ class DestinationServiceTest
           },
           {
             "Name": "CC8-HTTP-CERT",
+            "Type": "HTTP",
+            "URL": "https://a.s4hana.ondemand.com",
+            "Authentication": "ClientCertificateAuthentication",
+            "ProxyType": "Internet",
+            "KeyStorePassword": "password",
+            "KeyStoreLocation": "aaa"
+          },
+          {
+            "Name": "SomeDestinationName",
             "Type": "HTTP",
             "URL": "https://a.s4hana.ondemand.com",
             "Authentication": "ClientCertificateAuthentication",
@@ -334,6 +352,9 @@ class DestinationServiceTest
     @BeforeEach
     void setup()
     {
+        // Disable PreLookupCheck to simplify test setup
+        DestinationService.Cache.disablePreLookupCheck();
+
         providerTenant = new DefaultTenant("provider-tenant");
         subscriberTenant = new DefaultTenant("subscriber-tenant");
         context.setTenant(subscriberTenant);
@@ -368,7 +389,7 @@ class DestinationServiceTest
 
         final String httResponseProvider = createHttpDestinationServiceResponse(destinationName, providerUrl);
         final String httpResponseSubscriber = createHttpDestinationServiceResponse(destinationName, subscriberUrl);
-        final String destinationPath = "/destinations/" + destinationName;
+        final String destinationPath = "/v1/destinations/" + destinationName;
 
         doReturn(httResponseProvider)
             .when(destinationServiceAdapter)
@@ -431,16 +452,16 @@ class DestinationServiceTest
     {
         doReturn(responseServiceInstanceDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         doReturn(responseSubaccountDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         final Collection<DestinationProperties> destinationList = loader.getAllDestinationProperties();
 
         assertThat(destinationList)
             .extracting(d -> d.get(DestinationProperty.NAME).get())
-            .containsExactly("CC8-HTTP-BASIC", "CC8-HTTP-CERT1", "CC8-HTTP-CERT");
+            .containsExactly("CC8-HTTP-BASIC", "CC8-HTTP-CERT1", "CC8-HTTP-CERT", destinationName);
 
         final DestinationProperties destination =
             destinationList
@@ -458,9 +479,9 @@ class DestinationServiceTest
 
         // verify all results are cached
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
     }
 
     @Test
@@ -468,15 +489,15 @@ class DestinationServiceTest
     {
         doReturn(responseServiceInstanceDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
         doReturn(responseSubaccountDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
 
         final Collection<DestinationProperties> destinationList = loader.getAllDestinationProperties(ALWAYS_PROVIDER);
         assertThat(destinationList)
             .extracting(d -> d.get(DestinationProperty.NAME).get())
-            .containsExactly("CC8-HTTP-BASIC", "CC8-HTTP-CERT1", "CC8-HTTP-CERT");
+            .containsExactly("CC8-HTTP-BASIC", "CC8-HTTP-CERT1", "CC8-HTTP-CERT", destinationName);
     }
 
     @Test
@@ -484,32 +505,31 @@ class DestinationServiceTest
     {
         doReturn(responseServiceInstanceDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         doReturn(responseSubaccountDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         final Collection<DestinationProperties> destinationList = loader.getAllDestinationProperties(ONLY_SUBSCRIBER);
         assertThat(destinationList)
             .extracting(d -> d.get(DestinationProperty.NAME).get())
-            .containsExactly("CC8-HTTP-BASIC", "CC8-HTTP-CERT1", "CC8-HTTP-CERT");
+            .containsExactly("CC8-HTTP-BASIC", "CC8-HTTP-CERT1", "CC8-HTTP-CERT", destinationName);
     }
 
+    @SneakyThrows
     @Test
     // slow test, run manually if needed
     void destinationServiceTimeOutWhileGettingDestination()
-        throws IOException
     {
         final HttpDestination serviceDestination = DefaultHttpDestination.builder("").build();
 
         // prepare slow HttpClient
-        HttpClientFactory factory = HttpClientAccessor.getHttpClientFactory();
-        HttpClient cl = mock(HttpClient.class);
+        final HttpClient cl = mock(HttpClient.class);
         doAnswer(invocation -> {
             Thread.sleep(TEST_TIMEOUT);
             return null;
-        }).when(cl).execute(any());
-        HttpClientAccessor.setHttpClientFactory(dest -> cl);
+        }).when(cl).execute(any(ClassicHttpRequest.class), any(DestinationHttpClientResponseHandler.class));
+        ApacheHttpClient5Accessor.setHttpClientFactory(dest -> cl);
 
         // prepare adapter
         final DestinationServiceAdapter adapter =
@@ -538,11 +558,11 @@ class DestinationServiceTest
             .isExactlyInstanceOf(DestinationAccessException.class)
             .hasRootCauseExactlyInstanceOf(TimeoutException.class);
 
-        verify(cl, times(1)).execute(any());
-        verify(adapter, times(1)).getConfigurationAsJson(eq("/destinations/SomeDestinationName"), any());
+        verify(cl, times(1)).execute(any(ClassicHttpRequest.class), any(DestinationHttpClientResponseHandler.class));
+        verify(adapter, times(1)).getConfigurationAsJson(eq("/v1/destinations/SomeDestinationName"), any());
 
         // reset
-        HttpClientAccessor.setHttpClientFactory(null);
+        ApacheHttpClient5Accessor.setHttpClientFactory(null);
     }
 
     @Test
@@ -573,10 +593,10 @@ class DestinationServiceTest
     {
         doReturn(responseServiceInstanceDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
         doReturn(responseSubaccountDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_PROVIDER));
 
         final DestinationOptions options =
             DestinationOptions.builder().augmentBuilder(augmenter().retrievalStrategy(ALWAYS_PROVIDER)).build();
@@ -587,10 +607,10 @@ class DestinationServiceTest
         final List<Destination> destinationList = new ArrayList<>();
         destinations.get().forEach(destinationList::add);
 
-        assertThat(destinationList.size()).isEqualTo(3);
+        assertThat(destinationList.size()).isEqualTo(4);
         assertThat(destinationList)
             .extracting(d -> d.get(DestinationProperty.NAME).get())
-            .containsOnly("CC8-HTTP-BASIC", "CC8-HTTP-CERT", "CC8-HTTP-CERT1");
+            .containsOnly("CC8-HTTP-BASIC", "CC8-HTTP-CERT", "CC8-HTTP-CERT1", destinationName);
     }
 
     @SuppressWarnings( "deprecation" )
@@ -691,10 +711,10 @@ class DestinationServiceTest
     {
         doReturn(responseDestinationWithoutAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         doReturn(responseDestinationWithAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
 
         @SuppressWarnings( "deprecation" )
         final DestinationOptionsAugmenter optionsStrategy =
@@ -707,9 +727,9 @@ class DestinationServiceTest
         assertThat(httpDestination.getHeaders()).containsExactly(new Header("Authorization", "Bearer bearer_token"));
 
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
     }
 
     @Test
@@ -717,7 +737,7 @@ class DestinationServiceTest
     {
         doReturn(responseDestinationWithoutAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         @SuppressWarnings( "deprecation" )
         final DestinationOptions options =
@@ -731,10 +751,10 @@ class DestinationServiceTest
         assertThatThrownBy(destination::get).isExactlyInstanceOf(DestinationAccessException.class);
 
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(0))
             .getConfigurationAsJson(
-                eq("/destinations/CC8-HTTP-OAUTH"),
+                eq("/v1/destinations/CC8-HTTP-OAUTH"),
                 argThat(s -> !s.equals(withoutToken(TECHNICAL_USER_CURRENT_TENANT))));
     }
 
@@ -743,7 +763,7 @@ class DestinationServiceTest
     {
         doReturn(responseDestinationWithAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
 
         final DestinationOptions options =
             DestinationOptions.builder().augmentBuilder(augmenter().tokenExchangeStrategy(EXCHANGE_ONLY)).build();
@@ -754,7 +774,7 @@ class DestinationServiceTest
         assertThat(httpDestination.getHeaders()).containsExactly(new Header("Authorization", "Bearer bearer_token"));
 
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(0))
             .getConfigurationAsJson(any(), argThat(s -> !s.equals(withoutToken(NAMED_USER_CURRENT_TENANT))));
     }
@@ -781,7 +801,7 @@ class DestinationServiceTest
                 + "  }"
                 + "}")
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson(eq("/destinations/" + destinationName), any());
+            .getConfigurationAsJson(eq("/v1/destinations/" + destinationName), any());
 
         @SuppressWarnings( "deprecation" )
         final DestinationOptionsAugmenter optionsStrategy =
@@ -804,7 +824,7 @@ class DestinationServiceTest
         assertThat(dest.get("mail.description")).containsExactly("delete me");
 
         verify(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_PROVIDER));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_PROVIDER));
     }
 
     @Test
@@ -820,25 +840,25 @@ class DestinationServiceTest
         loader.tryGetDestination(destinationName);
         verify(destinationServiceAdapter, times(1))
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         loader.tryGetDestination(destinationName, defaultOptions);
         verify(destinationServiceAdapter, times(1))
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         loader.tryGetDestination(destinationName, optionsWithDefaultRetrievalStrategy);
         verify(destinationServiceAdapter, times(2))
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         loader.tryGetDestination(destinationName, secondInstanceOfDefaultOptions);
         verify(destinationServiceAdapter, times(2))
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
     }
 
@@ -855,7 +875,7 @@ class DestinationServiceTest
             loader.tryGetDestination(destinationName, options);
             verify(destinationServiceAdapter, times(1))
                 .getConfigurationAsJson(
-                    "/destinations/" + destinationName,
+                    "/v1/destinations/" + destinationName,
                     withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
         }
         // sleep to guarantee at least 1ms difference
@@ -868,7 +888,7 @@ class DestinationServiceTest
             loader.tryGetDestination(destinationName, options);
             verify(destinationServiceAdapter, times(2))
                 .getConfigurationAsJson(
-                    "/destinations/" + destinationName,
+                    "/v1/destinations/" + destinationName,
                     withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
         }
     }
@@ -884,34 +904,38 @@ class DestinationServiceTest
 
         verify(destinationServiceAdapter, times(1))
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         assertThat(DestinationService.Cache.instanceSingle().estimatedSize()).isEqualTo(1);
     }
 
+    @SneakyThrows
     @Test
     void testUnknownDestinationLeadsToDestinationNotFoundException()
-        throws IOException
     {
         // prepare 404 HttpClient
-        final HttpClientFactory factory = HttpClientAccessor.getHttpClientFactory();
         final HttpClient client404 = mock(HttpClient.class);
-        when(client404.execute(any())).thenReturn(new BasicHttpResponse(HttpVersion.HTTP_1_1, 404, "Not found"));
-        HttpClientAccessor.setHttpClientFactory(dest -> client404);
+        ApacheHttpClient5Accessor.setHttpClientFactory(dest -> client404);
+
+        final var response404 = new BasicClassicHttpResponse(HttpStatus.SC_NOT_FOUND, "Not Found");
+        doAnswer(invocation -> {
+            final HttpClientResponseHandler<?> handler = invocation.getArgument(1);
+            return handler.handleResponse(response404);
+        }).when(client404).execute(any(ClassicHttpRequest.class), any(DestinationHttpClientResponseHandler.class));
 
         assertThatThrownBy(() -> loader.tryGetDestination("UnknownDestination").get())
             .isInstanceOf(DestinationNotFoundException.class);
 
         // reset
-        HttpClientAccessor.setHttpClientFactory(factory);
+        ApacheHttpClient5Accessor.setHttpClientFactory(null);
     }
 
     private void tryGetDestinationTwice( String destinationName, String responseDestination, int numberOfFetches )
     {
         doReturn(responseDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         @SuppressWarnings( "deprecation" )
         final DestinationOptions options =
@@ -924,7 +948,7 @@ class DestinationServiceTest
         loader.tryGetDestination(destinationName, options);
 
         verify(destinationServiceAdapter, times(numberOfFetches))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
     }
 
@@ -985,10 +1009,10 @@ class DestinationServiceTest
     {
         doReturn(responseDestinationWithoutAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         doReturn(responseDestinationWithExpiredAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
 
         @SuppressWarnings( "deprecation" )
         final DestinationOptionsAugmenter optionsStrategy =
@@ -999,9 +1023,9 @@ class DestinationServiceTest
         loader.tryGetDestination("CC8-HTTP-OAUTH", options);
 
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/CC8-HTTP-OAUTH", withoutToken(NAMED_USER_CURRENT_TENANT));
     }
 
     /* Test case:
@@ -1099,7 +1123,7 @@ class DestinationServiceTest
             return responseDestinationWithBasicAuthToken;
         })
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         final Future<Try<Destination>> firstThread = ThreadContextExecutors.submit(() -> {
             softly.assertThat(TenantAccessor.tryGetCurrentTenant()).isNotEmpty();
@@ -1135,7 +1159,7 @@ class DestinationServiceTest
         verify(tenantLockSpy, times(1)).lock();
         verify(tenantLockSpy, times(1)).unlock();
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         softly.assertThat(DestinationService.Cache.instanceSingle().asMap()).containsOnlyKeys(tenantCacheKey);
         softly.assertAll();
@@ -1226,7 +1250,7 @@ class DestinationServiceTest
             return responseDestinationWithBasicAuthToken;
         })
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         @SuppressWarnings( "deprecation" )
         final DestinationOptions options =
             DestinationOptions
@@ -1253,9 +1277,13 @@ class DestinationServiceTest
         assertThat(DestinationService.Cache.isolationLocks().asMap())
             .containsOnlyKeys(
                 CacheKey.fromIds("TenantA", null).append(destinationName, options),
-                CacheKey.fromIds("TenantA", null).append(options),
+                CacheKey
+                    .fromIds("TenantA", null)
+                    .append(DestinationServiceOptionsAugmenter.getRetrievalStrategy(options)),
                 CacheKey.fromIds("TenantB", null).append(destinationName, options),
-                CacheKey.fromIds("TenantB", null).append(options));
+                CacheKey
+                    .fromIds("TenantB", null)
+                    .append(DestinationServiceOptionsAugmenter.getRetrievalStrategy(options)));
 
         // assert cache entries for one get-single command for each tenant
         assertThat(DestinationService.Cache.instanceSingle().asMap())
@@ -1267,7 +1295,7 @@ class DestinationServiceTest
         assertThat(DestinationService.Cache.instanceAll().asMap()).isEmpty();
 
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         // we are not performing further requests (i.e. there are no 'get-all' requests)
         verifyNoMoreInteractions(destinationServiceAdapter);
@@ -1281,7 +1309,7 @@ class DestinationServiceTest
         doReturn(responseDestinationWithBasicAuthToken)
             .when(destinationServiceAdapter)
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         context.setTenant(providerTenant);
@@ -1298,7 +1326,7 @@ class DestinationServiceTest
 
         verify(destinationServiceAdapter, times(1))
             .getConfigurationAsJson(
-                "/destinations/" + destinationName,
+                "/v1/destinations/" + destinationName,
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
     }
 
@@ -1310,7 +1338,7 @@ class DestinationServiceTest
 
         doReturn(responseDestinationWithAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
 
         final Try<Destination> firstDestination = loader.tryGetDestination(destinationName, options);
 
@@ -1325,7 +1353,9 @@ class DestinationServiceTest
             .containsOnlyKeys(
                 CacheKey.of(subscriberTenant, principal1).append(destinationName, options),
                 CacheKey.of(subscriberTenant, principal2).append(destinationName, options),
-                CacheKey.of(subscriberTenant, null).append(options));
+                CacheKey
+                    .of(subscriberTenant, null)
+                    .append(DestinationServiceOptionsAugmenter.getRetrievalStrategy(options)));
 
         assertThat(DestinationService.Cache.instanceSingle().asMap())
             .containsOnlyKeys(
@@ -1335,7 +1365,7 @@ class DestinationServiceTest
         assertThat(DestinationService.Cache.instanceAll().asMap()).isEmpty();
 
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
 
         // we are not performing further requests (i.e. there are no 'get-all' requests)
         verifyNoMoreInteractions(destinationServiceAdapter);
@@ -1351,11 +1381,11 @@ class DestinationServiceTest
 
         doReturn(responseDestinationWithoutAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
 
         doReturn(responseDestinationWithAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
 
         final Try<Destination> firstDestination = loader.tryGetDestination(destinationName, options);
 
@@ -1369,7 +1399,9 @@ class DestinationServiceTest
         assertThat(DestinationService.Cache.isolationLocks().asMap())
             .containsOnlyKeys(
                 CacheKey.of(subscriberTenant, null).append(destinationName, options),
-                CacheKey.of(subscriberTenant, null).append(options));
+                CacheKey
+                    .of(subscriberTenant, null)
+                    .append(DestinationServiceOptionsAugmenter.getRetrievalStrategy(options)));
 
         assertThat(DestinationService.Cache.instanceSingle().asMap())
             .containsOnlyKeys(
@@ -1379,9 +1411,9 @@ class DestinationServiceTest
         assertThat(DestinationService.Cache.instanceAll().asMap()).isEmpty();
 
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
 
         // we are not performing further requests (i.e. there are no 'get-all' requests)
         verifyNoMoreInteractions(destinationServiceAdapter);
@@ -1390,14 +1422,14 @@ class DestinationServiceTest
     @Test
     void testSmartCacheServesAllPrincipalsWithSameDestination()
     {
-        doReturn("[]").when(destinationServiceAdapter).getConfigurationAsJson(eq("/instanceDestinations"), any());
+        doReturn("[]").when(destinationServiceAdapter).getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
         doReturn(responseSubaccountDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson(eq("/subaccountDestinations"), any());
+            .getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
 
         doReturn(responseDestinationWithBasicAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson(eq("/destinations/CC8-HTTP-BASIC"), any());
+            .getConfigurationAsJson(eq("/v1/destinations/CC8-HTTP-BASIC"), any());
 
         final AtomicReference<Destination> destination = new AtomicReference<>();
 
@@ -1413,28 +1445,28 @@ class DestinationServiceTest
         }
 
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(1))
             .getConfigurationAsJson(
-                "/destinations/CC8-HTTP-BASIC",
+                "/v1/destinations/CC8-HTTP-BASIC",
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
     }
 
     @Test
     void testChangeDetectionWithMisconfiguredDestination()
     {
-        doReturn("[]").when(destinationServiceAdapter).getConfigurationAsJson(eq("/instanceDestinations"), any());
+        doReturn("[]").when(destinationServiceAdapter).getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
         // One of the getAll destinations will be misconfigured (the smart cache will implicitly call getAll)
         doReturn(brokenResponseSubaccountDestination)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson(eq("/subaccountDestinations"), any());
+            .getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
 
         // normal response for the requested destination
         doReturn(responseDestinationWithBasicAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson(eq("/destinations/CC8-HTTP-BASIC"), any());
+            .getConfigurationAsJson(eq("/v1/destinations/CC8-HTTP-BASIC"), any());
 
         final int circuitBreakerBuffer =
             ResilienceConfiguration.CircuitBreakerConfiguration.DEFAULT_CLOSED_BUFFER_SIZE
@@ -1449,13 +1481,13 @@ class DestinationServiceTest
 
         // the circuit breaker will getAll, receive a misconfigured destination and open
         verify(destinationServiceAdapter, times(circuitBreakerBuffer))
-            .getConfigurationAsJson("/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/instanceDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(circuitBreakerBuffer))
-            .getConfigurationAsJson("/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/subaccountDestinations", withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         // the requested destination is unaffected
         verify(destinationServiceAdapter, times(1))
             .getConfigurationAsJson(
-                "/destinations/CC8-HTTP-BASIC",
+                "/v1/destinations/CC8-HTTP-BASIC",
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         // we are not performing further requests
@@ -1480,7 +1512,7 @@ class DestinationServiceTest
         assertThat(DestinationService.Cache.instanceAll().asMap()).isEmpty();
 
         verify(destinationServiceAdapter, times(1))
-            .getConfigurationAsJson(eq("/destinations/" + destinationName), any());
+            .getConfigurationAsJson(eq("/v1/destinations/" + destinationName), any());
 
         // we are not performing further requests (i.e. there are no 'get-all' requests)
         verifyNoMoreInteractions(destinationServiceAdapter);
@@ -1507,7 +1539,7 @@ class DestinationServiceTest
 
         doReturn(responseDestinationWithoutAuthToken)
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         doAnswer((Answer<String>) invocation -> {
             try {
                 destinationRetrievalLatch.countDown();
@@ -1519,7 +1551,7 @@ class DestinationServiceTest
             return responseDestinationWithAuthToken;
         })
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
 
         final Future<Try<Destination>> firstThread = ThreadContextExecutors.submit(() -> {
             softly.assertThat(TenantAccessor.tryGetCurrentTenant()).isNotEmpty();
@@ -1554,9 +1586,9 @@ class DestinationServiceTest
         verify(tenantLockSpy, times(1)).lock();
         verify(tenantLockSpy, times(1)).unlock();
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(TECHNICAL_USER_CURRENT_TENANT));
         verify(destinationServiceAdapter, times(2))
-            .getConfigurationAsJson("/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
+            .getConfigurationAsJson("/v1/destinations/" + destinationName, withoutToken(NAMED_USER_CURRENT_TENANT));
         verifyNoMoreInteractions(destinationServiceAdapter);
 
         softly
@@ -1574,11 +1606,50 @@ class DestinationServiceTest
     {
         doReturn("{ \"destinationConfiguration\" : { \"Name ... } }")
             .when(destinationServiceAdapter)
-            .getConfigurationAsJson(eq("/destinations/BadDestination"), any());
+            .getConfigurationAsJson(eq("/v1/destinations/BadDestination"), any());
 
         assertThatThrownBy(() -> loader.tryGetDestination("BadDestination").get())
             .isInstanceOf(DestinationAccessException.class)
             .hasRootCauseInstanceOf(MalformedJsonException.class);
+    }
+
+    @Test
+    void testCircuitBreaker()
+    {
+        DestinationService.Cache.disable();
+
+        doReturn("{ \"destinationConfiguration\" : { \"Name ... } }")
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/destinations/BadDestination"), any());
+
+        for( int i = 0; i < 10; ++i ) {
+            loader.tryGetDestination("BadDestination").getOrNull();
+        }
+        assertThatThrownBy(() -> loader.tryGetDestination("BadDestination").get())
+            .has(causeNotCircuitBreaker())
+            .has(causeMalformedJson());
+    }
+
+    private static Condition<Throwable> causeNotCircuitBreaker()
+    {
+        return new Condition<>(e -> {
+            for( Throwable t = e.getCause(); t != null; t = t.getCause() ) {
+                if( t instanceof CallNotPermittedException )
+                    return false;
+            }
+            return true;
+        }, "should not have CallNotPermittedException as one of the causes");
+    }
+
+    private static Condition<Throwable> causeMalformedJson()
+    {
+        return new Condition<>(e -> {
+            for( Throwable t = e.getCause(); t != null; t = t.getCause() ) {
+                if( t instanceof MalformedJsonException )
+                    return true;
+            }
+            return false;
+        }, "has MalformedJsonException as one of the causes");
     }
 
     @Test
@@ -1602,12 +1673,12 @@ class DestinationServiceTest
         doThrow(new DestinationAccessException("Error"))
             .when(destinationServiceAdapter)
             .getConfigurationAsJson(
-                eq("/instanceDestinations"),
+                eq("/v1/instanceDestinations"),
                 argThat(s -> s.behalf() == OnBehalfOf.TECHNICAL_USER_PROVIDER));
         doThrow(new DestinationAccessException("Error"))
             .when(destinationServiceAdapter)
             .getConfigurationAsJson(
-                eq("/subaccountDestinations"),
+                eq("/v1/subaccountDestinations"),
                 argThat(s -> s.behalf() == OnBehalfOf.TECHNICAL_USER_PROVIDER));
 
         assertThatThrownBy(loader::getAllDestinationProperties).isExactlyInstanceOf(DestinationAccessException.class);
@@ -1619,7 +1690,7 @@ class DestinationServiceTest
         doReturn(responseDestinationWithoutAuthToken)
             .when(destinationServiceAdapter)
             .getConfigurationAsJson(
-                "/destinations/CC8-HTTP-OAUTH",
+                "/v1/destinations/CC8-HTTP-OAUTH",
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
 
         final DestinationOptions options = DestinationOptions.builder().build();
@@ -1634,8 +1705,74 @@ class DestinationServiceTest
         // verify the result is not cached
         verify(destinationServiceAdapter, times(3))
             .getConfigurationAsJson(
-                "/destinations/CC8-HTTP-OAUTH",
+                "/v1/destinations/CC8-HTTP-OAUTH",
                 withUserToken(TECHNICAL_USER_CURRENT_TENANT, userToken));
+    }
+
+    @Test
+    void testCrossLevelScope()
+    {
+        final String destinationName = "CrossLevelDestination";
+        // the /v2 API does NOT respond with the "owner" attribute, thus not using createHttpDestinationServiceResponse() here
+        final String responseWithCrossLevel = """
+            {
+                "destinationConfiguration": {
+                    "Name": "%s",
+                    "Type": "HTTP",
+                    "URL": "https://foo.com",
+                    "Description": "%s level destination"
+                }
+            }
+            """;
+
+        final String expectedPathSubaccount = "/v2/destinations/%s@subaccount".formatted(destinationName);
+        final String expectedPathInstance = "/v2/destinations/%s@instance".formatted(destinationName);
+
+        doReturn(responseWithCrossLevel.formatted(destinationName, "subaccount"))
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq(expectedPathSubaccount), any());
+        doReturn(responseWithCrossLevel.formatted(destinationName, "instance"))
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq(expectedPathInstance), any());
+
+        final DestinationOptions optionsSubaccount =
+            DestinationOptions
+                .builder()
+                .augmentBuilder(
+                    DestinationServiceOptionsAugmenter
+                        .augmenter()
+                        .crossLevelConsumption(DestinationServiceOptionsAugmenter.CrossLevelScope.SUBACCOUNT))
+                .build();
+        final DestinationOptions optionsInstance =
+            DestinationOptions
+                .builder()
+                .augmentBuilder(
+                    DestinationServiceOptionsAugmenter
+                        .augmenter()
+                        .crossLevelConsumption(DestinationServiceOptionsAugmenter.CrossLevelScope.INSTANCE))
+                .build();
+
+        final Try<Destination> destinationSubaccount = loader.tryGetDestination(destinationName, optionsSubaccount);
+        final Try<Destination> destinationInstance = loader.tryGetDestination(destinationName, optionsInstance);
+
+        assertThat(destinationSubaccount.isSuccess()).isTrue();
+        assertThat(destinationSubaccount.get().get(DestinationProperty.NAME)).contains(destinationName);
+        assertThat(destinationSubaccount.get().get("Description")).contains("subaccount level destination");
+        assertThat(loader.tryGetDestination(destinationName, optionsSubaccount).get())
+            .describedAs("Destination should be cached")
+            .isSameAs(destinationSubaccount.get());
+
+        assertThat(destinationInstance.isSuccess()).isTrue();
+        assertThat(destinationInstance.get()).isNotEqualTo(destinationSubaccount.get());
+        assertThat(destinationInstance.get().get(DestinationProperty.NAME)).contains(destinationName);
+        assertThat(destinationInstance.get().get("Description")).contains("instance level destination");
+        assertThat(loader.tryGetDestination(destinationName, optionsInstance).get())
+            .describedAs("Destination should be cached")
+            .isSameAs(destinationInstance.get());
+
+        // Verify destinations are cached, but isolated by cross-level scope
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq(expectedPathSubaccount), any());
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq(expectedPathInstance), any());
     }
 
     @Test
@@ -1670,10 +1807,7 @@ class DestinationServiceTest
             .getConfigurationAsJson(any(), argThat(it -> it.fragment() == null));
 
         final Function<String, DestinationOptions> optsBuilder =
-            frag -> DestinationOptions
-                .builder()
-                .augmentBuilder(DestinationServiceOptionsAugmenter.augmenter().fragmentName(frag))
-                .build();
+            frag -> DestinationOptions.builder().augmentBuilder(augmenter().fragmentName(frag)).build();
 
         final Destination dA = loader.tryGetDestination("destination", optsBuilder.apply("a-fragment")).get();
         final Destination dB = loader.tryGetDestination("destination", optsBuilder.apply("b-fragment")).get();
@@ -1757,11 +1891,31 @@ class DestinationServiceTest
             assertThat(PrincipalAccessor.getCurrentPrincipal().getPrincipalId()).isEqualTo("principal-" + i);
             destination = loader.tryGetDestination(name, DestinationOptions.builder().build()).get().asHttp();
 
-            httpClient = HttpClientAccessor.getHttpClient(destination);
+            httpClient = ApacheHttpClient5Accessor.getHttpClient(destination);
             System.out.println("[" + LocalDateTime.now() + "] Got " + name);
         }
         assertThat(DestinationService.Cache.instanceSingle().estimatedSize()).isEqualTo(1);
-        assertThat(httpClient).isSameAs(HttpClientAccessor.getHttpClient(destination));
+        assertThat(httpClient).isSameAs(ApacheHttpClient5Accessor.getHttpClient(destination));
+    }
+
+    @Test
+    @DisplayName( "Custom headers in DestinationOptions are forwarded to Destination Service" )
+    void testCustomHeadersForwardedToDestinationService()
+    {
+        final Header h1 = new Header("X-Custom-Header-1", "value-1");
+        final Header h2 = new Header("X-Custom-Header-2", "value-2");
+
+        final DestinationOptions options =
+            DestinationOptions.builder().augmentBuilder(augmenter().customHeaders(h1, h2)).build();
+
+        // trigger fetching destination with custom headers
+        loader.tryGetDestination(destinationName, options).get();
+
+        // verify the adapter was called with a strategy carrying the custom headers
+        verify(destinationServiceAdapter, times(1))
+            .getConfigurationAsJson(
+                any(),
+                argThat(s -> s.additionalHeaders().contains(h1) && s.additionalHeaders().contains(h2)));
     }
 
     private String createHttpDestinationServiceResponse( final String name, final String url )
@@ -1782,5 +1936,189 @@ class DestinationServiceTest
                 }
             }
             """, name, url);
+    }
+
+    @Test
+    void testPrependGetAllDestinationsCall()
+    {
+        // Reset Cache to re-enable the PreLookupCheck
+        DestinationService.Cache.reset();
+
+        doReturn(responseServiceInstanceDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
+        doReturn(responseSubaccountDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
+
+        loader.tryGetDestination(destinationName).get();
+
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
+        verify(destinationServiceAdapter, times(1))
+            .getConfigurationAsJson(eq("/v1/destinations/" + destinationName), any());
+        verifyNoMoreInteractions(destinationServiceAdapter);
+    }
+
+    @Test
+    void testPrependGetAllDestinationsCallWithMissingDestination()
+    {
+        // Reset Cache to re-enable the PreLookupCheck
+        DestinationService.Cache.reset();
+
+        doReturn(responseServiceInstanceDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
+        doReturn(responseSubaccountDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
+
+        assertThatThrownBy(() -> loader.tryGetDestination("thisDestinationDoesNotExist").get())
+            .isInstanceOf(DestinationNotFoundException.class)
+            .hasMessageContaining("was not found among the destinations for CurrentTenant.");
+
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
+        verifyNoMoreInteractions(destinationServiceAdapter);
+    }
+
+    @Test
+    void testPrependGetAllDestinationsCallUsesCorrectRetrievalStrategy()
+    {
+        // Reset Cache to re-enable the PreLookupCheck
+        DestinationService.Cache.reset();
+
+        doReturn(responseServiceInstanceDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
+        doReturn(responseServiceInstanceDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
+        // destination with name destinationName is provider-only
+        doReturn(responseSubaccountDestination)
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(
+                eq("/v1/subaccountDestinations"),
+                argThat(s -> s.behalf() == TECHNICAL_USER_PROVIDER));
+
+        // set current tenant to be the subscriber tenant
+        context.setTenant(providerTenant);
+
+        final DestinationOptions options =
+            DestinationOptions.builder().augmentBuilder(augmenter().retrievalStrategy(ALWAYS_PROVIDER)).build();
+
+        final Destination result = loader.tryGetDestination(destinationName, options).get();
+        assertThat(result.asHttp().getUri()).isEqualTo(URI.create(providerUrl));
+    }
+
+    @ParameterizedTest
+    @MethodSource( "testCasesUncachedDestinationLookup" )
+    void testPrependGetAllDestinationsCallSkipped( final DestinationOptions options, final String expectedPath )
+    {
+        // Reset Cache to re-enable the PreLookupCheck
+        DestinationService.Cache.reset();
+
+        // additional mock for cross level test case
+        final String responseWithCrossLevel = """
+            {
+                "destinationConfiguration": {
+                    "Name": "%s",
+                    "Type": "HTTP",
+                    "URL": "https://foo.com",
+                    "Description": "%s level destination"
+                }
+            }
+            """;
+        doReturn(responseWithCrossLevel.formatted(destinationName, "subaccount"))
+            .when(destinationServiceAdapter)
+            .getConfigurationAsJson(eq(expectedPath), any());
+
+        // call single destination with options
+        loader.tryGetDestination(destinationName, options).get();
+
+        // verify that there was no call to all-destination endpoints
+        verify(destinationServiceAdapter, times(0)).getConfigurationAsJson(eq("/v1/instanceDestinations"), any());
+        verify(destinationServiceAdapter, times(0)).getConfigurationAsJson(eq("/v1/subaccountDestinations"), any());
+        verify(destinationServiceAdapter, times(1)).getConfigurationAsJson(eq(expectedPath), any());
+        verifyNoMoreInteractions(destinationServiceAdapter);
+    }
+
+    private static Stream<Arguments> testCasesUncachedDestinationLookup()
+    {
+        // custom header
+        final Header h1 = new Header("X-Custom-Header-1", "value-1");
+        final DestinationOptions optionsWithHeader =
+            DestinationOptions.builder().augmentBuilder(augmenter().customHeaders(h1)).build();
+
+        // cross-level consumption
+        final DestinationServiceOptionsAugmenter.CrossLevelScope crossLevelScope =
+            DestinationServiceOptionsAugmenter.CrossLevelScope.SUBACCOUNT;
+        final DestinationOptions optionsWithSubaccount =
+            DestinationOptions.builder().augmentBuilder(augmenter().crossLevelConsumption(crossLevelScope)).build();
+
+        // fragments
+        final DestinationOptions optionsWithFragment =
+            DestinationOptions.builder().augmentBuilder(augmenter().fragmentName("a-fragment")).build();
+
+        return Stream
+            .of(
+                Arguments.of(optionsWithHeader, "/v1/destinations/" + destinationName),
+                Arguments.of(optionsWithSubaccount, "/v2/destinations/" + destinationName + "@subaccount"),
+                Arguments.of(optionsWithFragment, "/v1/destinations/" + destinationName));
+    }
+
+    @Test
+    void testValidateDestinationLookup()
+    {
+        val OPTIONS_EMPTY = DestinationOptions.builder().build();
+        val OPTIONS_EXPER =
+            DestinationOptions.builder().augmentBuilder(augmenter().crossLevelConsumption(PROVIDER_SUBACCOUNT)).build();
+        val OPTIONS_CURRT =
+            DestinationOptions.builder().augmentBuilder(augmenter().retrievalStrategy(CURRENT_TENANT)).build();
+        val OPTIONS_PROVT =
+            DestinationOptions.builder().augmentBuilder(augmenter().retrievalStrategy(ALWAYS_PROVIDER)).build();
+
+        val adapter = mock(DestinationServiceAdapter.class);
+        val sut = spy(new DestinationService(adapter));
+
+        val curr = List.of(DefaultHttpDestination.builder("http://current-tenant-1").name("current-dest-1").build());
+        doReturn(curr).when(sut).getAllDestinationProperties(CURRENT_TENANT);
+        val prov = List.of(DefaultHttpDestination.builder("http://provider-tenant-1").name("provider-dest-1").build());
+        doReturn(prov).when(sut).getAllDestinationProperties(ALWAYS_PROVIDER);
+
+        // valid case: disabled cache
+        DestinationService.Cache.disable();
+        assertThat(sut.validateDestinationLookup("unknown-dest-1", OPTIONS_EMPTY)).isEmpty();
+
+        // valid case: disabled pre-lookup check
+        DestinationService.Cache.reset();
+        DestinationService.Cache.disablePreLookupCheck();
+        assertThat(sut.validateDestinationLookup("unknown-dest-1", OPTIONS_EMPTY)).isEmpty();
+
+        // valid case: experimental properties
+        DestinationService.Cache.reset();
+        assertThat(sut.validateDestinationLookup("unknown-dest-1", OPTIONS_EXPER)).isEmpty();
+
+        // valid case: current tenant
+        DestinationService.Cache.reset();
+        assertThat(sut.validateDestinationLookup("current-dest-1", OPTIONS_CURRT)).isEmpty();
+
+        // valid case: provider tenant
+        DestinationService.Cache.reset();
+        assertThat(sut.validateDestinationLookup("provider-dest-1", OPTIONS_PROVT)).isEmpty();
+
+        // invalid case: current tenant
+        DestinationService.Cache.reset();
+        assertThat(sut.validateDestinationLookup("unknown-dest-1", OPTIONS_PROVT))
+            .allSatisfy(
+                e -> assertThat(e)
+                    .hasMessage("Destination unknown-dest-1 was not found among the destinations for AlwaysProvider."));
+
+        // invalid case: provider tenant
+        DestinationService.Cache.reset();
+        assertThat(sut.validateDestinationLookup("unknown-dest-1", OPTIONS_CURRT))
+            .allSatisfy(
+                e -> assertThat(e)
+                    .hasMessage("Destination unknown-dest-1 was not found among the destinations for CurrentTenant."));
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 package testcomparison.namespaces.actionsandfunctions;
@@ -84,15 +84,15 @@ public class NewComplexResult
         // simple properties
         {
             if (cloudSdkValues.containsKey("Foo")) {
-                final Object value = cloudSdkValues.remove("Foo");
-                if ((value == null)||(!value.equals(getFoo()))) {
-                    setFoo(((java.lang.String) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("Foo");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getFoo()))) {
+                    setFoo(((java.lang.String) cloudSdkValue));
                 }
             }
             if (cloudSdkValues.containsKey("Bar")) {
-                final Object value = cloudSdkValues.remove("Bar");
-                if ((value == null)||(!value.equals(getBar()))) {
-                    setBar(((java.lang.String) value));
+                final Object cloudSdkValue = cloudSdkValues.remove("Bar");
+                if ((cloudSdkValue == null)||(!cloudSdkValue.equals(getBar()))) {
+                    setBar(((java.lang.String) cloudSdkValue));
                 }
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 /*
@@ -30,6 +30,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.annotation.JsonTypeName;
 import com.fasterxml.jackson.annotation.JsonValue;
 import test.Cola;
+import test.ColaBarCode;
 import test.Fanta;
 import test.FantaFlavor;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
@@ -48,8 +49,6 @@ import javax.annotation.Nullable;
 @JsonSubTypes({
   @JsonSubTypes.Type(value = Cola.class, name = "cool_cola"),
   @JsonSubTypes.Type(value = Fanta.class, name = "fancy_fanta"),
-  @JsonSubTypes.Type(value = Cola.class, name = "Cola"),
-  @JsonSubTypes.Type(value = Fanta.class, name = "Fanta"),
 })
 
 public interface OneOfWithDiscriminatorAndMapping  {

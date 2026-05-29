@@ -13,7 +13,6 @@ import java.util.LinkedHashSet;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 import java.util.regex.Pattern;
 
@@ -39,7 +38,6 @@ class CustomJavaClientCodegen extends JavaClientCodegen
 {
     private final GenerationConfiguration config;
     private static final Predicate<String> DOUBLE_IS_PATTERN = Pattern.compile("^isIs[A-Z]").asPredicate();
-    private static final Set<String> PRIMITIVES = Set.of("String", "Integer", "Long", "Double", "Float", "Byte");
 
     public CustomJavaClientCodegen( @Nonnull final GenerationConfiguration config )
     {
@@ -135,7 +133,7 @@ class CustomJavaClientCodegen extends JavaClientCodegen
         super.updateModelForComposedSchema(m, schema, allDefinitions);
 
         if( USE_ONE_OF_CREATORS.isEnabled(config) ) {
-            useCreatorsForInterfaceSubtypes(m);
+            new CreatorForInterfaceSubtypesFeature(m, config).apply();
         }
     }
 
@@ -255,50 +253,6 @@ class CustomJavaClientCodegen extends JavaClientCodegen
             }
             return false;
         });
-    }
-
-    /**
-     * Use JsonCreator for interface sub-types in case there are any primitives.
-     *
-     * @param m
-     *            The model to update.
-     */
-    private void useCreatorsForInterfaceSubtypes( @Nonnull final CodegenModel m )
-    {
-        if( m.discriminator != null ) {
-            return;
-        }
-        boolean useCreators = false;
-        for( final Set<String> candidates : List.of(m.anyOf, m.oneOf) ) {
-            int nonPrimitives = 0;
-            final var candidatesSingle = new HashSet<String>();
-            final var candidatesMultiple = new HashSet<String>();
-
-            for( final String candidate : candidates ) {
-                if( candidate.startsWith("List<") ) {
-                    final var c1 = candidate.substring(5, candidate.length() - 1);
-                    candidatesMultiple.add(c1);
-                    useCreators = true;
-                } else {
-                    candidatesSingle.add(candidate);
-                    useCreators |= PRIMITIVES.contains(candidate);
-                    if( !PRIMITIVES.contains(candidate) ) {
-                        nonPrimitives++;
-                    }
-                }
-            }
-            if( useCreators ) {
-                if( nonPrimitives > 1 ) {
-                    final var msg =
-                        "Generating interface with mixed multiple non-primitive and primitive sub-types: {}. Deserialization may not work.";
-                    log.warn(msg, m.name);
-                }
-                candidates.clear();
-                final var monads = Map.of("single", candidatesSingle, "multiple", candidatesMultiple);
-                m.vendorExtensions.put("x-monads", monads);
-                m.vendorExtensions.put("x-is-one-of-interface", true); // enforce template usage
-            }
-        }
     }
 
     @SuppressWarnings( { "rawtypes", "RedundantSuppression" } )

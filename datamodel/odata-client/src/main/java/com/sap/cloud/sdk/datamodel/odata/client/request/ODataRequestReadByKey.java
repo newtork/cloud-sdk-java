@@ -7,6 +7,7 @@ import javax.annotation.Nullable;
 
 import org.apache.http.client.HttpClient;
 
+import com.google.common.annotations.Beta;
 import com.sap.cloud.sdk.datamodel.odata.client.ODataProtocol;
 import com.sap.cloud.sdk.datamodel.odata.client.expression.ODataResourcePath;
 import com.sap.cloud.sdk.datamodel.odata.client.query.StructuredQuery;
@@ -75,7 +76,8 @@ public class ODataRequestReadByKey extends ODataRequestGeneric
 
     /**
      * Constructor with StructuredQuery for OData read requests on entity collections directly. For operations on nested
-     * entity collections use {@link #ODataRequestRead(String, ODataResourcePath, String, ODataProtocol)}.
+     * entity collections use
+     * {@link ODataRequestRead#ODataRequestRead(String, ODataResourcePath, String, ODataProtocol)}.
      *
      * @param servicePath
      *            The OData service path.
@@ -94,7 +96,7 @@ public class ODataRequestReadByKey extends ODataRequestGeneric
     {
         this(
             servicePath,
-            entityPath.addParameterToLastSegment(entityKey),
+            entityPath.copy().addParameterToLastSegment(entityKey),
             query.getEncodedQueryString(),
             query.getProtocol());
     }
@@ -127,5 +129,18 @@ public class ODataRequestReadByKey extends ODataRequestGeneric
                 ? tryExecute(request::requestGet, httpClient)
                 : tryExecuteWithCsrfToken(httpClient, request::requestGet);
         return result.get();
+    }
+
+    /**
+     * Disable pre-buffering of http response entity.
+     *
+     * @since 5.21.0
+     */
+    @Beta
+    @Nonnull
+    public ODataRequestResultResource.Executable withoutResponseBuffering()
+    {
+        requestResultFactory = ODataRequestResultFactory.WITHOUT_BUFFER;
+        return httpClient -> (ODataRequestResultResource) this.execute(httpClient);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 /*
@@ -41,6 +41,12 @@ public class AnyOf
 
     @JsonProperty( "caffeine" )
     private Boolean caffeine;
+
+    @JsonProperty( "logo" )
+    private ColaLogo logo;
+
+    @JsonProperty( "barCode" )
+    private ColaBarCode barCode;
 
     @JsonProperty( "color" )
     private String color;
@@ -129,6 +135,78 @@ public class AnyOf
     public void setCaffeine( @Nullable final Boolean caffeine )
     {
         this.caffeine = caffeine;
+    }
+
+    /**
+     * Set the logo of this {@link AnyOf} instance and return the same instance.
+     *
+     * @param logo
+     *            The logo of this {@link AnyOf}
+     * @return The same instance of this {@link AnyOf} class
+     */
+    @Nonnull
+    public AnyOf logo( @Nullable final ColaLogo logo )
+    {
+        this.logo = logo;
+        return this;
+    }
+
+    /**
+     * Get logo
+     *
+     * @return logo The logo of this {@link AnyOf} instance.
+     */
+    @Nonnull
+    public ColaLogo getLogo()
+    {
+        return logo;
+    }
+
+    /**
+     * Set the logo of this {@link AnyOf} instance.
+     *
+     * @param logo
+     *            The logo of this {@link AnyOf}
+     */
+    public void setLogo( @Nullable final ColaLogo logo )
+    {
+        this.logo = logo;
+    }
+
+    /**
+     * Set the barCode of this {@link AnyOf} instance and return the same instance.
+     *
+     * @param barCode
+     *            The barCode of this {@link AnyOf}
+     * @return The same instance of this {@link AnyOf} class
+     */
+    @Nonnull
+    public AnyOf barCode( @Nullable final ColaBarCode barCode )
+    {
+        this.barCode = barCode;
+        return this;
+    }
+
+    /**
+     * Get barCode
+     *
+     * @return barCode The barCode of this {@link AnyOf} instance.
+     */
+    @Nonnull
+    public ColaBarCode getBarCode()
+    {
+        return barCode;
+    }
+
+    /**
+     * Set the barCode of this {@link AnyOf} instance.
+     *
+     * @param barCode
+     *            The barCode of this {@link AnyOf}
+     */
+    public void setBarCode( @Nullable final ColaBarCode barCode )
+    {
+        this.barCode = barCode;
     }
 
     /**
@@ -250,6 +328,10 @@ public class AnyOf
             declaredFields.put("sodaType", sodaType);
         if( caffeine != null )
             declaredFields.put("caffeine", caffeine);
+        if( logo != null )
+            declaredFields.put("logo", logo);
+        if( barCode != null )
+            declaredFields.put("barCode", barCode);
         if( color != null )
             declaredFields.put("color", color);
         if( flavor != null )
@@ -285,6 +367,8 @@ public class AnyOf
         return Objects.equals(this.cloudSdkCustomFields, anyOf.cloudSdkCustomFields)
             && Objects.equals(this.sodaType, anyOf.sodaType)
             && Objects.equals(this.caffeine, anyOf.caffeine)
+            && Objects.equals(this.logo, anyOf.logo)
+            && Objects.equals(this.barCode, anyOf.barCode)
             && Objects.equals(this.color, anyOf.color)
             && Objects.equals(this.flavor, anyOf.flavor);
     }
@@ -292,7 +376,7 @@ public class AnyOf
     @Override
     public int hashCode()
     {
-        return Objects.hash(sodaType, caffeine, color, flavor, cloudSdkCustomFields);
+        return Objects.hash(sodaType, caffeine, logo, barCode, color, flavor, cloudSdkCustomFields);
     }
 
     @Override
@@ -303,6 +387,8 @@ public class AnyOf
         sb.append("class AnyOf {\n");
         sb.append("    sodaType: ").append(toIndentedString(sodaType)).append("\n");
         sb.append("    caffeine: ").append(toIndentedString(caffeine)).append("\n");
+        sb.append("    logo: ").append(toIndentedString(logo)).append("\n");
+        sb.append("    barCode: ").append(toIndentedString(barCode)).append("\n");
         sb.append("    color: ").append(toIndentedString(color)).append("\n");
         sb.append("    flavor: ").append(toIndentedString(flavor)).append("\n");
         cloudSdkCustomFields

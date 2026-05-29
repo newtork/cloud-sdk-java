@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 SAP SE or an SAP affiliate company. All rights reserved.
+ * Copyright (c) 2026 SAP SE or an SAP affiliate company. All rights reserved.
  */
 
 /*
@@ -24,9 +24,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 @JsonTypeInfo( use = JsonTypeInfo.Id.NAME, property = "sodaType", visible = true )
 @JsonSubTypes( {
     @JsonSubTypes.Type( value = Cola.class, name = "cool_cola" ),
-    @JsonSubTypes.Type( value = Fanta.class, name = "fancy_fanta" ),
-    @JsonSubTypes.Type( value = Cola.class, name = "Cola" ),
-    @JsonSubTypes.Type( value = Fanta.class, name = "Fanta" ), } )
+    @JsonSubTypes.Type( value = Fanta.class, name = "fancy_fanta" ), } )
 
 public interface OneOfWithDiscriminatorAndMapping
 {

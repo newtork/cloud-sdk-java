@@ -22,7 +22,7 @@ import java.util.TreeMap;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 
-import org.apache.http.HttpHeaders;
+import org.apache.hc.core5.http.HttpHeaders;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -40,7 +40,7 @@ class DestinationServiceAuthenticationTest
     private static final String BASIC_AUTH = "Zm9vOmJhcg==";
     private static final String DESTINATION_NAME = "CXT-HTTP-OAUTH";
 
-    private static final String SERVICE_PATH_DESTINATION = "/destinations/" + DESTINATION_NAME;
+    private static final String SERVICE_PATH_DESTINATION = "/v1/destinations/" + DESTINATION_NAME;
 
     @SuppressWarnings( "deprecation" )
     private static final DestinationOptions DESTINATION_RETRIEVAL_LOOKUP_EXCHANGE =
@@ -66,6 +66,8 @@ class DestinationServiceAuthenticationTest
             .when(mockAdapter)
             .getConfigurationAsJson(anyString(), any());
         sut = new DestinationService(mockAdapter);
+        // Disable PreLookupCheck to simplify test setup
+        DestinationService.Cache.disablePreLookupCheck();
     }
 
     @Test
@@ -290,7 +292,7 @@ class DestinationServiceAuthenticationTest
         assertThat(dest.asHttp().getHeaders())
             .containsExactlyInAnyOrder(new Header("Authorization", "Bearer " + oAuthToken));
 
-        verify(mockAdapter, times(1)).getConfigurationAsJson(anyString(), eq(expectedStrategy));
+        verify(mockAdapter, times(1)).getConfigurationAsJson(eq(SERVICE_PATH_DESTINATION), eq(expectedStrategy));
         verifyNoMoreInteractions(mockAdapter);
     }
 
@@ -382,7 +384,7 @@ class DestinationServiceAuthenticationTest
         assertThat(dest.asHttp().getAuthenticationType()).isEqualTo(AuthenticationType.SAP_ASSERTION_SSO);
         assertThat(dest.asHttp().getHeaders()).containsExactlyInAnyOrder(new Header("Cookie", assertionCookie));
 
-        verify(mockAdapter, times(1)).getConfigurationAsJson(anyString(), eq(expectedStrategy));
+        verify(mockAdapter, times(1)).getConfigurationAsJson(eq(SERVICE_PATH_DESTINATION), eq(expectedStrategy));
         verifyNoMoreInteractions(mockAdapter);
     }
 
